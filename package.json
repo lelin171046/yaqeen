@@ -1,0 +1,35 @@
+{
+  "name": "yaqeen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Yaqeen - natural nuts, dry foods and nutrition e-commerce",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @yaqeen/shared",
+    "dev": "npm run build:shared && concurrently -k -n web,api -c cyan,green \"npm run dev -w @yaqeen/web\" \"npm run dev -w @yaqeen/api\"",
+    "dev:web": "npm run dev -w @yaqeen/web",
+    "dev:api": "npm run dev -w @yaqeen/api",
+    "build": "npm run build:shared && npm run build -w @yaqeen/web && npm run build -w @yaqeen/api",
+    "typecheck": "npm run typecheck -w @yaqeen/shared && npm run typecheck -w @yaqeen/web && npm run typecheck -w @yaqeen/api",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "npm run test -w @yaqeen/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.6",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
