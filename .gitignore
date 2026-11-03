@@ -1,4 +1,5 @@
 node_modules/
+.vercel/
 dist/
 build/
 coverage/
@@ -18,3 +19,5 @@ Thumbs.db
 apps/web/dist/
 apps/api/dist/
 packages/shared/dist/
+
+.vercel
