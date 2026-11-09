@@ -1,10 +1,7 @@
+import { STORE_WHATSAPP } from '@yaqeen/shared';
+
 export function getWhatsAppHref(message?: string): string {
-  const number = import.meta.env.VITE_STORE_WHATSAPP;
-
-  if (!number) {
-    return '#contact';
-  }
-
+  const number = import.meta.env.VITE_STORE_WHATSAPP || STORE_WHATSAPP;
   const digits = number.replace(/\D/g, '');
   const query = message ? `?text=${encodeURIComponent(message)}` : '';
 

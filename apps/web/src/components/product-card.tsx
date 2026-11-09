@@ -9,9 +9,9 @@ export function ProductCard({ product }: { product: ProductDto }) {
   const category = typeof product.category === 'object' ? product.category : null;
 
   return (
-    <article className="group overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-lg hover:shadow-primary/5">
-      <Link to={`/product/${product.slug}`} className="block">
-        <div className="relative aspect-square overflow-hidden bg-secondary">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-lg hover:shadow-primary/5">
+      <Link to={`/product/${product.slug}`} className="flex h-full flex-col">
+        <div className="relative aspect-square shrink-0 overflow-hidden bg-secondary">
           {image?.url ? (
             <img
               src={image.url}
@@ -31,20 +31,18 @@ export function ProductCard({ product }: { product: ProductDto }) {
           </div>
         </div>
 
-        <div className="p-4">
-          {category && (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {category.name}
-            </p>
-          )}
-          <h3 className="mt-1.5 text-base font-semibold leading-snug">{product.name}</h3>
-          {product.shortDescription && (
-            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-              {product.shortDescription}
-            </p>
-          )}
+        <div className="flex flex-1 flex-col p-4">
+          <p className="min-h-4 text-[11px] font-semibold uppercase leading-4 tracking-[0.14em] text-muted-foreground">
+            {category?.name ?? '\u00A0'}
+          </p>
+          <h3 className="mt-1.5 line-clamp-2 min-h-11 text-base font-semibold leading-snug">
+            {product.name}
+          </h3>
+          <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
+            {product.shortDescription || '\u00A0'}
+          </p>
 
-          <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="mt-auto flex items-end justify-between gap-3 pt-4">
             <div>
               <p className="text-[11px] text-muted-foreground">From</p>
               <p className="text-lg font-semibold">{formatBdt(product.basePrice)}</p>

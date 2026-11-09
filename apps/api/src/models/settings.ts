@@ -1,3 +1,4 @@
+import { HERO_SLIDE_THEME_VALUES } from '@yaqeen/shared';
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
 
 const deliveryZoneSchema = new Schema(
@@ -14,6 +15,36 @@ const socialLinksSchema = new Schema(
     facebook: { type: String, trim: true, default: '' },
     instagram: { type: String, trim: true, default: '' },
     whatsapp: { type: String, trim: true, default: '' },
+  },
+  { _id: false },
+);
+
+const heroSlideSchema = new Schema(
+  {
+    id: { type: String, required: true, trim: true, maxlength: 80 },
+    eyebrow: { type: String, trim: true, maxlength: 60, default: '' },
+    title: { type: String, required: true, trim: true, maxlength: 140 },
+    description: { type: String, trim: true, maxlength: 500, default: '' },
+    ctaLabel: { type: String, required: true, trim: true, maxlength: 40 },
+    ctaHref: { type: String, required: true, trim: true, maxlength: 300 },
+    badge: { type: String, trim: true, maxlength: 40, default: '' },
+    image: { type: String, trim: true, default: '' },
+    imageAlt: { type: String, trim: true, maxlength: 180, default: '' },
+    theme: {
+      type: String,
+      enum: HERO_SLIDE_THEME_VALUES,
+      default: 'forest',
+    },
+    isActive: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
+const heroCarouselSchema = new Schema(
+  {
+    autoplaySeconds: { type: Number, default: 6, min: 0, max: 30 },
+    pauseOnHover: { type: Boolean, default: true },
+    slides: { type: [heroSlideSchema], default: [] },
   },
   { _id: false },
 );
@@ -75,6 +106,10 @@ const settingsSchema = new Schema(
     },
     socialLinks: {
       type: socialLinksSchema,
+      default: undefined,
+    },
+    heroCarousel: {
+      type: heroCarouselSchema,
       default: undefined,
     },
   },

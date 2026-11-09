@@ -1,6 +1,11 @@
-import type { SettingsUpdateInput } from '@yaqeen/shared';
+import {
+  DEFAULT_HERO_CAROUSEL,
+  type HeroCarouselSettings,
+  type SettingsUpdateInput,
+} from '@yaqeen/shared';
 import { env } from '../../config/env.js';
 import { SettingsModel } from '../../models/settings.js';
+import { getEmailStatus, type EmailProvider } from '../../services/email.js';
 
 export interface PublicSettings {
   storeName: string;
@@ -10,10 +15,51 @@ export interface PublicSettings {
   freeDeliveryThreshold: number;
   defaultDeliveryCharge: number;
   deliveryZones: Array<{ name: string; charge: number }>;
+  heroCarousel: HeroCarouselSettings;
+}
+
+function mapHeroCarousel(
+  saved: HeroCarouselSettings | undefined,
+  includeInactive: boolean,
+): HeroCarouselSettings {
+  const carousel = saved ?? DEFAULT_HERO_CAROUSEL;
+
+  return {
+    autoplaySeconds: carousel.autoplaySeconds ?? 6,
+    pauseOnHover: carousel.pauseOnHover ?? true,
+    slides: (carousel.slides ?? [])
+      .filter((slide) => includeInactive || slide.isActive)
+      .map((slide) => ({
+        id: slide.id,
+        eyebrow: slide.eyebrow ?? '',
+        title: slide.title,
+        description: slide.description ?? '',
+        ctaLabel: slide.ctaLabel,
+        ctaHref: slide.ctaHref,
+        badge: slide.badge ?? '',
+        image: slide.image ?? '',
+        imageAlt: slide.imageAlt ?? '',
+        theme: slide.theme ?? 'forest',
+        isActive: slide.isActive ?? true,
+      })),
+  };
 }
 
 async function findSettings() {
   return SettingsModel.findOne({ key: 'store' }).lean();
+}
+
+export async function getAlertEmailRecipients(): Promise<string[]> {
+  const settings = await findSettings();
+  const fromEnv = (env.SELLER_ALERT_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim())
+    .filter(Boolean);
+  const recipients = [...(settings?.adminAlertEmails ?? []), ...fromEnv]
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  return [...new Set(recipients)];
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {
@@ -29,6 +75,10 @@ export async function getPublicSettings(): Promise<PublicSettings> {
     deliveryZones: (settings?.deliveryZones ?? [])
       .filter((zone) => zone.isActive)
       .map((zone) => ({ name: zone.name, charge: zone.charge })),
+    heroCarousel: mapHeroCarousel(
+      settings?.heroCarousel as HeroCarouselSettings | undefined,
+      false,
+    ),
   };
 }
 
@@ -58,10 +108,13 @@ export interface AdminSettings extends PublicSettings {
     instagram: string;
     whatsapp: string;
   };
+  emailProvider: EmailProvider;
+  emailConfigured: boolean;
 }
 
 export async function getAdminSettings(): Promise<AdminSettings> {
   const settings = await findSettings();
+  const emailStatus = getEmailStatus();
 
   return {
     storeName: settings?.storeName ?? 'Yaqeen',
@@ -77,11 +130,17 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     })),
     adminAlertEmails: settings?.adminAlertEmails ?? [],
     adminAlertWhatsapp: settings?.adminAlertWhatsapp ?? [],
+    emailProvider: emailStatus.provider,
+    emailConfigured: emailStatus.configured,
     socialLinks: {
       facebook: settings?.socialLinks?.facebook ?? '',
       instagram: settings?.socialLinks?.instagram ?? '',
       whatsapp: settings?.socialLinks?.whatsapp ?? '',
     },
+    heroCarousel: mapHeroCarousel(
+      settings?.heroCarousel as HeroCarouselSettings | undefined,
+      true,
+    ),
   };
 }
 
@@ -100,3 +159,4 @@ export async function updateAdminSettings(
 
   return getAdminSettings();
 }
+

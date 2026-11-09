@@ -1,4 +1,5 @@
 import {
+  ORDER_COURIERS,
   ORDER_PAYMENT_STATUSES,
   ORDER_SOURCES,
   ORDER_STATUSES,
@@ -91,6 +92,18 @@ const orderSchema = new Schema(
       enum: [...ORDER_STATUSES],
       default: 'PENDING',
       index: true,
+    },
+    courier: {
+      type: String,
+      enum: [...ORDER_COURIERS, ''],
+      default: '',
+      trim: true,
+    },
+    courierTrackingId: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: '',
     },
     statusHistory: {
       type: [statusHistorySchema],

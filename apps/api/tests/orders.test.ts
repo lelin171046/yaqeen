@@ -160,6 +160,51 @@ describe('public orders', () => {
     expect(detail.body.product.variants[0].stock).toBe(25);
   });
 
+  it('requires courier details when an order is picked up and restocks failed deliveries', async () => {
+    const agent = await createAdminAgent(app);
+    const product = await createProduct(agent);
+    const variantSku = product.variants[0].sku as string;
+
+    const created = await request(app)
+      .post('/api/orders')
+      .send(orderBody(product._id, variantSku, 2));
+
+    expect(created.status).toBe(201);
+    const orderNumber = created.body.order.orderNumber as string;
+
+    const missingCourier = await agent
+      .patch(`/api/admin/orders/${orderNumber}/status`)
+      .send({ status: 'SHIPPED' });
+
+    expect(missingCourier.status).toBe(422);
+    expect(missingCourier.body.code).toBe('VALIDATION_ERROR');
+
+    const pickedUp = await agent
+      .patch(`/api/admin/orders/${orderNumber}/status`)
+      .send({
+        status: 'SHIPPED',
+        courier: 'PATHAO',
+        courierTrackingId: 'PAT-123456789',
+      });
+
+    expect(pickedUp.status).toBe(200);
+    expect(pickedUp.body.order).toMatchObject({
+      status: 'SHIPPED',
+      courier: 'PATHAO',
+      courierTrackingId: 'PAT-123456789',
+    });
+
+    const failed = await agent
+      .patch(`/api/admin/orders/${orderNumber}/status`)
+      .send({ status: 'DELIVERY_FAILED' });
+
+    expect(failed.status).toBe(200);
+    expect(failed.body.order.status).toBe('DELIVERY_FAILED');
+
+    const restored = await request(app).get('/api/products/premium-cashews');
+    expect(restored.body.product.variants[0].stock).toBe(25);
+  });
+
   it('exposes safe public store settings', async () => {
     const response = await request(app).get('/api/settings');
 

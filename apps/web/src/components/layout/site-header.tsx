@@ -3,6 +3,7 @@ import { Menu, Search, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useCategories } from '@/hooks/use-catalog';
 import { cn } from '@/lib/utils';
 import { getWhatsAppHref } from '@/lib/whatsapp';
 import { cartCount, useCart } from '@/stores/cart';
@@ -17,6 +18,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const count = useCart((state) => cartCount(state.items));
+  const { data: categories } = useCategories();
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,6 +97,35 @@ export function SiteHeader() {
           >
             {menuOpen ? <X /> : <Menu />}
           </Button>
+        </div>
+      </div>
+
+      <div className="hidden border-t border-border/60 bg-card/60 md:block">
+        <div className="mx-auto flex max-w-7xl items-center gap-6 overflow-x-auto px-4 py-2 text-xs font-semibold text-muted-foreground sm:px-6 lg:px-8">
+          <Link to="/shop" className="whitespace-nowrap text-primary">
+            All products
+          </Link>
+          {categories?.slice(0, 6).map((category) => (
+            <Link
+              key={category._id}
+              to={`/shop?category=${category.slug}`}
+              className="whitespace-nowrap transition-colors hover:text-primary"
+            >
+              {category.name}
+            </Link>
+          ))}
+          <Link
+            to="/shop?sort=price_asc"
+            className="whitespace-nowrap transition-colors hover:text-primary"
+          >
+            Best value
+          </Link>
+          <Link
+            to="/track"
+            className="ml-auto whitespace-nowrap transition-colors hover:text-primary"
+          >
+            Track order
+          </Link>
         </div>
       </div>
 

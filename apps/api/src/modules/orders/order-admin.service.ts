@@ -10,7 +10,7 @@ import { ProductModel } from '../../models/product.js';
 import { AppError } from '../../utils/app-error.js';
 import { toPublicOrder } from './order.service.js';
 
-const RESTOCKING_STATUSES = new Set(['CANCELLED', 'RETURNED']);
+const RESTOCKING_STATUSES = new Set(['CANCELLED', 'RETURNED', 'DELIVERY_FAILED']);
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -222,6 +222,12 @@ export async function updateOrderStatus(
   }
 
   order.status = input.status;
+
+  if (input.status === 'SHIPPED') {
+    order.courier = input.courier ?? '';
+    order.courierTrackingId = input.courierTrackingId ?? '';
+  }
+
   order.statusHistory.push({
     status: input.status,
     note: input.note ?? '',

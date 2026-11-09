@@ -1,3 +1,4 @@
+import { ORDER_STATUS_LABELS, type OrderStatus } from '@yaqeen/shared';
 import { Loader2, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +72,7 @@ const statusColors: Record<string, string> = {
   PROCESSING: 'border-indigo-200 bg-indigo-50 text-indigo-700',
   SHIPPED: 'border-violet-200 bg-violet-50 text-violet-700',
   DELIVERED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  DELIVERY_FAILED: 'border-orange-200 bg-orange-50 text-orange-700',
   CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700',
   RETURNED: 'border-slate-200 bg-slate-100 text-slate-700',
   UNPAID: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -84,7 +86,7 @@ export function StatusBadge({ value }: { value: string }) {
       variant="outline"
       className={cn('whitespace-nowrap', statusColors[value] ?? 'bg-muted text-foreground')}
     >
-      {value.toLowerCase().replace(/_/g, ' ')}
+      {ORDER_STATUS_LABELS[value as OrderStatus] ?? value.toLowerCase().replace(/_/g, ' ')}
     </Badge>
   );
 }

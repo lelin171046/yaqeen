@@ -1,9 +1,12 @@
 import {
+  ORDER_COURIERS,
+  ORDER_COURIER_LABELS,
   ORDER_PAYMENT_STATUSES,
-  ORDER_STATUSES,
   ORDER_STATUS_LABELS,
+  ORDER_STATUS_UPDATE_OPTIONS,
   PAYMENT_METHOD_LABELS,
   formatBdt,
+  type OrderCourier,
   type OrderStatus,
   type PaymentMethod,
 } from '@yaqeen/shared';
@@ -28,6 +31,7 @@ import {
   StatusBadge,
 } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -85,8 +89,19 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
   const updatePayment = useUpdateOrderPayment(order.orderNumber);
   const updateNotes = useUpdateOrderNotes(order.orderNumber);
 
-  const [status, setStatus] = useState<OrderStatus>(order.status as OrderStatus);
+  const currentStatus = order.status as OrderStatus;
+  const statusOptions = Array.from(
+    new Set<OrderStatus>([currentStatus, ...ORDER_STATUS_UPDATE_OPTIONS]),
+  );
+
+  const [status, setStatus] = useState<OrderStatus>(currentStatus);
   const [statusNote, setStatusNote] = useState('');
+  const [courier, setCourier] = useState<OrderCourier | ''>(
+    (ORDER_COURIERS as readonly string[]).includes(order.courier)
+      ? (order.courier as OrderCourier)
+      : '',
+  );
+  const [courierTrackingId, setCourierTrackingId] = useState(order.courierTrackingId ?? '');
   const [paymentStatus, setPaymentStatus] = useState(order.paymentStatus);
   const [paymentNote, setPaymentNote] = useState('');
   const [adminNotes, setAdminNotes] = useState(order.adminNotes ?? '');
@@ -94,8 +109,19 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
   const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
   const saveStatus = () => {
+    if (status === 'SHIPPED' && (!courier || !courierTrackingId.trim())) {
+      toast.error('Select a courier and enter the tracking ID');
+      return;
+    }
+
     updateStatus.mutate(
-      { status, note: statusNote.trim() || undefined },
+      {
+        status,
+        note: statusNote.trim() || undefined,
+        ...(status === 'SHIPPED'
+          ? { courier: courier as OrderCourier, courierTrackingId: courierTrackingId.trim() }
+          : {}),
+      },
       {
         onSuccess: () => {
           toast.success('Order status updated');
@@ -160,6 +186,12 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
         {order.source.linkCode && (
           <span className="rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
             Campaign: {order.source.linkCode}
+          </span>
+        )}
+        {order.courier && (
+          <span className="rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
+            {ORDER_COURIER_LABELS[order.courier as OrderCourier] ?? order.courier}
+            {order.courierTrackingId ? ` · ${order.courierTrackingId}` : ''}
           </span>
         )}
       </div>
@@ -336,13 +368,46 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                   value={status}
                   onChange={(event) => setStatus(event.target.value as OrderStatus)}
                 >
-                  {ORDER_STATUSES.map((item) => (
+                  {statusOptions.map((item) => (
                     <option key={item} value={item}>
                       {ORDER_STATUS_LABELS[item]}
                     </option>
                   ))}
                 </Select>
               </Field>
+              {status === 'SHIPPED' && (
+                <>
+                  <Field label="Courier" htmlFor="order-courier">
+                    <Select
+                      id="order-courier"
+                      value={courier}
+                      onChange={(event) =>
+                        setCourier(event.target.value as OrderCourier | '')
+                      }
+                    >
+                      <option value="">Select courier</option>
+                      {ORDER_COURIERS.map((item) => (
+                        <option key={item} value={item}>
+                          {ORDER_COURIER_LABELS[item]}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field
+                    label="Courier tracking ID"
+                    htmlFor="order-tracking-id"
+                    hint="Required when marking the order as picked up."
+                  >
+                    <Input
+                      id="order-tracking-id"
+                      value={courierTrackingId}
+                      onChange={(event) => setCourierTrackingId(event.target.value)}
+                      placeholder="e.g. PAT-123456789"
+                      maxLength={80}
+                    />
+                  </Field>
+                </>
+              )}
               <Field label="Note (optional)" htmlFor="status-note">
                 <Textarea
                   id="status-note"
@@ -361,7 +426,8 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                 {updateStatus.isPending ? 'Updating…' : 'Update status'}
               </Button>
               <p className="text-[11px] text-muted-foreground">
-                Cancelling or returning an order restores its stock automatically.
+                Cancelling, returning or a failed delivery restores the order stock
+                automatically.
               </p>
             </div>
           </section>

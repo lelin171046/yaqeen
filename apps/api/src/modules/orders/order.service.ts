@@ -1,9 +1,11 @@
 import type { CreateOrderInput } from '@yaqeen/shared';
 import { Types } from 'mongoose';
+import { logger } from '../../config/logger.js';
 import { nextSequence } from '../../models/counter.js';
 import { OrderLinkModel } from '../../models/order-link.js';
 import { OrderModel, type OrderDocument } from '../../models/order.js';
 import { ProductModel } from '../../models/product.js';
+import { notifyNewOrder } from '../../services/order-notifications.js';
 import { AppError } from '../../utils/app-error.js';
 import { getDeliveryCharge } from '../settings/settings.service.js';
 
@@ -21,6 +23,8 @@ interface OrderLine {
 export interface PublicOrder {
   orderNumber: string;
   status: string;
+  courier: string;
+  courierTrackingId: string;
   paymentStatus: string;
   paymentMethod: string;
   bkashTrxId: string;
@@ -90,6 +94,8 @@ export function toPublicOrder(order: OrderDocument): PublicOrder {
   return {
     orderNumber: order.orderNumber,
     status: order.status,
+    courier: order.courier ?? '',
+    courierTrackingId: order.courierTrackingId ?? '',
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
     bkashTrxId: order.bkashTrxId,
@@ -308,6 +314,15 @@ export async function createOrder(input: CreateOrderInput): Promise<PublicOrder>
     });
 
     await recordLinkOrder(input.source?.linkCode, lines, total);
+
+    try {
+      await notifyNewOrder(order);
+    } catch (notificationError) {
+      logger.error(
+        { err: notificationError, orderNumber: order.orderNumber },
+        'Could not queue new order notifications',
+      );
+    }
 
     return toPublicOrder(order);
   } catch (error) {

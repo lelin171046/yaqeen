@@ -1,7 +1,9 @@
 import {
   formatBdt,
+  ORDER_COURIER_LABELS,
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  type OrderCourier,
   type OrderStatus,
   type PaymentMethod,
 } from '@yaqeen/shared';
@@ -136,6 +138,7 @@ export default function OrderPage() {
 
   const currentIndex = statusFlow.indexOf(order.status as OrderStatus);
   const isCancelled = order.status === 'CANCELLED' || order.status === 'RETURNED';
+  const isDeliveryFailed = order.status === 'DELIVERY_FAILED';
   const whatsappHref = getWhatsAppHref(
     `Hi Yaqeen, I need help with order ${order.orderNumber}.`,
   );
@@ -187,16 +190,25 @@ export default function OrderPage() {
               {order.customer.area ? `${order.customer.area}, ` : ''}
               {order.customer.district}
             </span>
+            {order.courier && (
+              <span className="inline-flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" />
+                {ORDER_COURIER_LABELS[order.courier as OrderCourier] ?? order.courier}
+                {order.courierTrackingId ? ` · ${order.courierTrackingId}` : ''}
+              </span>
+            )}
           </div>
         </div>
 
         <section className="mt-6 rounded-2xl border bg-card p-5 sm:p-6">
           <h2 className="text-lg font-semibold">Order progress</h2>
 
-          {isCancelled ? (
+          {isCancelled || isDeliveryFailed ? (
             <p className="mt-3 rounded-xl bg-destructive/5 p-4 text-sm text-destructive">
               This order is {ORDER_STATUS_LABELS[order.status as OrderStatus]?.toLowerCase()}.{' '}
-              Message us on WhatsApp if you need help.
+              {isDeliveryFailed
+                ? 'Our team will contact you to arrange a re-delivery.'
+                : 'Message us on WhatsApp if you need help.'}
             </p>
           ) : (
             <div className="mt-5">

@@ -1,3 +1,4 @@
+import { formatBdt } from '@yaqeen/shared';
 import { useEffect, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SiteFooter } from './site-footer';
@@ -12,8 +13,13 @@ export function SiteLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <div className="bg-primary px-4 py-2 text-center text-xs font-medium tracking-wide text-primary-foreground sm:text-sm">
-        Free delivery on orders over ৳2,000 across Bangladesh
+      <div className="bg-primary px-4 text-primary-foreground">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 text-xs font-medium tracking-wide sm:text-sm">
+          <span>Free delivery on orders over {formatBdt(2000)} across Bangladesh</span>
+          <span className="hidden text-primary-foreground/75 sm:inline">
+            Cash on delivery · Nationwide delivery
+          </span>
+        </div>
       </div>
       <SiteHeader />
       {children}

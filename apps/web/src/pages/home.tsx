@@ -1,11 +1,15 @@
+import {
+  DEFAULT_HERO_CAROUSEL,
+  HERO_SLIDE_THEME_GRADIENTS,
+} from '@yaqeen/shared';
 import { motion, type Variants } from 'framer-motion';
 import {
   ArrowRight,
   BadgeCheck,
-  Check,
   Dumbbell,
   Gift,
   Leaf,
+  Package,
   PackageCheck,
   Phone,
   Salad,
@@ -13,16 +17,20 @@ import {
   ShoppingBag,
   Sparkles,
   Sprout,
-  Star,
   Truck,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SiteLayout } from '@/components/layout/site-layout';
+import { OfferCarousel, type OfferSlide } from '@/components/offer-carousel';
+import { ProductCard } from '@/components/product-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCategories, useProducts } from '@/hooks/use-catalog';
+import { useSettings } from '@/hooks/use-settings';
 import { cn } from '@/lib/utils';
+import { getWhatsAppHref } from '@/lib/whatsapp';
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -38,55 +46,32 @@ const stagger: Variants = {
   },
 };
 
-const categories: Array<{
+const fallbackCategories: Array<{
   name: string;
   slug: string;
-  description: string;
+  image: string;
   icon: LucideIcon;
-  tone: string;
 }> = [
-  {
-    name: 'Nuts & Seeds',
-    slug: 'nuts-seeds',
-    description: 'Kaju, badam, pista and more',
-    icon: Sprout,
-    tone: 'bg-emerald-50 text-emerald-700',
-  },
-  {
-    name: 'Dry Fruits',
-    slug: 'dry-fruits',
-    description: 'Dates, raisins and figs',
-    icon: Gift,
-    tone: 'bg-amber-50 text-amber-700',
-  },
-  {
-    name: 'Diet Foods',
-    slug: 'diet-foods',
-    description: 'Light, clean and filling',
-    icon: Salad,
-    tone: 'bg-lime-50 text-lime-700',
-  },
+  { name: 'Nuts & Seeds', slug: 'nuts-seeds', image: '', icon: Sprout },
+  { name: 'Dry Fruits', slug: 'dry-fruits', image: '', icon: Gift },
+  { name: 'Diet Foods', slug: 'diet-foods', image: '', icon: Salad },
   {
     name: 'Nutritional Foods',
     slug: 'nutritional-foods',
-    description: 'Protein, fibre and energy',
+    image: '',
     icon: Dumbbell,
-    tone: 'bg-orange-50 text-orange-700',
   },
-  {
-    name: 'Gift Boxes',
-    slug: 'gift-boxes',
-    description: 'Thoughtful and premium',
-    icon: PackageCheck,
-    tone: 'bg-rose-50 text-rose-700',
-  },
-  {
-    name: 'Combo Packs',
-    slug: 'combo-packs',
-    description: 'More value, more goodness',
-    icon: ShoppingBag,
-    tone: 'bg-sky-50 text-sky-700',
-  },
+  { name: 'Gift Boxes', slug: 'gift-boxes', image: '', icon: PackageCheck },
+  { name: 'Combo Packs', slug: 'combo-packs', image: '', icon: ShoppingBag },
+];
+
+const categoryTones = [
+  'bg-emerald-50 text-emerald-700',
+  'bg-amber-50 text-amber-700',
+  'bg-lime-50 text-lime-700',
+  'bg-orange-50 text-orange-700',
+  'bg-rose-50 text-rose-700',
+  'bg-sky-50 text-sky-700',
 ];
 
 const trustPoints: Array<{ title: string; description: string; icon: LucideIcon }> = [
@@ -112,6 +97,29 @@ const trustPoints: Array<{ title: string; description: string; icon: LucideIcon 
   },
 ];
 
+const promises: Array<{ title: string; description: string; icon: LucideIcon }> = [
+  {
+    title: 'Natural ingredients',
+    description: 'No unnecessary fillers or artificial shortcuts.',
+    icon: Leaf,
+  },
+  {
+    title: 'Honest value',
+    description: 'Fair prices and clear pack sizes, every time.',
+    icon: Wallet,
+  },
+  {
+    title: 'Freshness first',
+    description: 'Packed close to dispatch so it arrives fresh.',
+    icon: BadgeCheck,
+  },
+  {
+    title: 'Real support',
+    description: 'Talk to a real person on WhatsApp when you need help.',
+    icon: Phone,
+  },
+];
+
 const steps = [
   {
     title: 'Choose your favourites',
@@ -127,144 +135,184 @@ const steps = [
   },
 ];
 
-export default function HomePage() {
+const sideOffers = [
+  {
+    eyebrow: 'Combo savings',
+    title: 'Build a better pantry box',
+    href: '/shop?category=combo-packs',
+    icon: ShoppingBag,
+    gradient: 'linear-gradient(140deg, #14532d 0%, #166534 55%, #0f766e 100%)',
+  },
+  {
+    eyebrow: 'Gift ready',
+    title: 'Premium gift boxes',
+    href: '/shop?category=gift-boxes',
+    icon: Gift,
+    gradient: 'linear-gradient(140deg, #3b1d0f 0%, #7c3f1d 55%, #c07a32 100%)',
+  },
+];
 
-  const whatsappNumber = import.meta.env.VITE_STORE_WHATSAPP;
-  const whatsappHref = whatsappNumber
-    ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}`
-    : '#contact';
+function categoryIcon(slug: string): LucideIcon {
+  const value = slug.toLowerCase();
+
+  if (value.includes('nut') || value.includes('seed')) return Sprout;
+  if (value.includes('dry') || value.includes('date')) return Gift;
+  if (value.includes('diet')) return Salad;
+  if (value.includes('nutrition')) return Dumbbell;
+  if (value.includes('gift')) return PackageCheck;
+  if (value.includes('combo')) return ShoppingBag;
+
+  return Package;
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  href,
+  linkLabel,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  href?: string;
+  linkLabel?: string;
+}) {
+  return (
+    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+      <div>
+        <p className="text-sm font-semibold text-primary">{eyebrow}</p>
+        <h2 className="mt-1 text-2xl font-semibold sm:text-3xl">{title}</h2>
+        {description && (
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {href && linkLabel && (
+        <Link
+          to={href}
+          className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+        >
+          {linkLabel}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function ProductGridSkeleton() {
+  return (
+    <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card">
+          <div className="aspect-square animate-pulse bg-muted" />
+          <div className="flex flex-1 flex-col space-y-3 p-4">
+            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+            <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const whatsappHref = getWhatsAppHref();
+
+  const { data: categories } = useCategories();
+  const { data: settings } = useSettings();
+  const { data: catalog, isLoading: isCatalogLoading } = useProducts({
+    limit: 12,
+    sort: 'newest',
+  });
+
+  const products = catalog?.items ?? [];
+  const heroImages = products
+    .map((product) => product.images[0]?.url)
+    .filter((url): url is string => Boolean(url));
+
+  const carousel = settings?.heroCarousel ?? DEFAULT_HERO_CAROUSEL;
+  const heroSlides: OfferSlide[] = carousel.slides.map((slide, index) => ({
+    id: slide.id,
+    eyebrow: slide.eyebrow,
+    title: slide.title,
+    description: slide.description,
+    cta: slide.ctaLabel,
+    href: slide.ctaHref,
+    image: slide.image || heroImages[index] || heroImages[0],
+    imageAlt: slide.imageAlt,
+    badge: slide.badge || undefined,
+    gradient:
+      HERO_SLIDE_THEME_GRADIENTS[slide.theme] ??
+      HERO_SLIDE_THEME_GRADIENTS.forest,
+  }));
+
+  const displayCategories =
+    categories && categories.length > 0
+      ? categories.map((category) => ({
+          name: category.name,
+          slug: category.slug,
+          image: category.image,
+          icon: categoryIcon(category.slug),
+        }))
+      : fallbackCategories;
 
   return (
     <SiteLayout>
-      <main>
-        <section className="relative overflow-hidden">
-          <div className="pointer-events-none absolute -left-24 top-24 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
-          <div className="pointer-events-none absolute -right-24 top-64 h-80 w-80 rounded-full bg-emerald-200/40 blur-3xl" />
+      <main className="pb-16">
+        <section className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              'grid gap-4',
+              heroSlides.length > 0 && 'lg:grid-cols-[minmax(0,1fr)_300px]',
+            )}
+          >
+            {heroSlides.length > 0 && (
+              <OfferCarousel
+                slides={heroSlides}
+                interval={carousel.autoplaySeconds * 1000}
+                pauseOnHover={carousel.pauseOnHover}
+              />
+            )}
 
-          <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-24 lg:pt-20">
-            <motion.div initial="hidden" animate="show" variants={stagger}>
-              <motion.div variants={fadeUp}>
-                <Badge variant="soft" className="gap-1.5 px-3 py-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Natural. Honest. Delivered.
-                </Badge>
-              </motion.div>
-
-              <motion.h1
-                variants={fadeUp}
-                className="mt-5 max-w-2xl text-4xl leading-[1.05] font-semibold sm:text-5xl lg:text-6xl"
-              >
-                Goodness you can trust, delivered to your door.
-              </motion.h1>
-
-              <motion.p
-                variants={fadeUp}
-                className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg"
-              >
-                Premium nuts, dry fruits, diet foods and nutritional essentials, packed fresh
-                in Bangladesh and delivered with care.
-              </motion.p>
-
-              <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg">
-                  <Link to="/shop">
-                    Explore our range
-                    <ArrowRight />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg">
-                  <a href={whatsappHref} target="_blank" rel="noreferrer">
-                    <Phone />
-                    Order on WhatsApp
-                  </a>
-                </Button>
-              </motion.div>
-
-              <motion.div
-                variants={fadeUp}
-                className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-muted-foreground"
-              >
-                {['No account needed', 'Cash on delivery', 'Freshly packed'].map((item) => (
-                  <span key={item} className="inline-flex items-center gap-2">
-                    <Check className="h-4 w-4 text-primary" />
-                    {item}
-                  </span>
-                ))}
-              </motion.div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-              className="relative mx-auto w-full max-w-md"
+            <div
+              className={cn(
+                'grid gap-4 sm:grid-cols-2',
+                heroSlides.length > 0
+                  ? 'lg:grid-cols-1 lg:grid-rows-2'
+                  : 'lg:grid-cols-2',
+              )}
             >
-              <div className="absolute -right-4 -top-5 h-24 w-24 rounded-full bg-accent" />
-              <div className="relative overflow-hidden rounded-[2rem] bg-primary p-5 shadow-2xl shadow-primary/20 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <Badge className="border-0 bg-white/15 text-white">Best seller</Badge>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
-                    Yaqeen pick
+              {sideOffers.map((offer) => (
+                <Link
+                  key={offer.title}
+                  to={offer.href}
+                  className="group relative flex min-h-[180px] flex-col justify-between overflow-hidden rounded-[1.5rem] border border-white/10 p-5 text-white shadow-lg"
+                  style={{ backgroundImage: offer.gradient }}
+                >
+                  <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+                  <offer.icon className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 text-white/10" />
+                  <div className="relative">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+                      {offer.eyebrow}
+                    </p>
+                    <h2 className="mt-2 max-w-[12rem] font-display text-2xl font-semibold leading-tight">
+                      {offer.title}
+                    </h2>
+                  </div>
+                  <span className="relative inline-flex items-center gap-1 text-sm font-semibold">
+                    Shop now
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
-                </div>
-
-                <div className="relative mt-6 grid aspect-square place-items-center rounded-[1.5rem] bg-white/10">
-                  <div className="relative h-56 w-56 sm:h-64 sm:w-64">
-                    <div className="absolute inset-0 rounded-full bg-accent/90" />
-                    <div className="absolute left-5 top-9 h-20 w-24 rotate-12 rounded-[50%] bg-[#d8b25a] shadow-inner" />
-                    <div className="absolute right-4 top-16 h-16 w-20 -rotate-12 rounded-[50%] bg-[#c79a3f]" />
-                    <div className="absolute bottom-8 left-16 h-16 w-20 rotate-6 rounded-[50%] bg-[#e2c27a]" />
-                    <div className="absolute bottom-4 right-10 h-12 w-16 rotate-12 rounded-[50%] bg-[#b98b35]" />
-                  </div>
-                </div>
-
-                <div className="mt-5 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-xs text-white/60">Premium kaju</p>
-                    <p className="font-display text-xl text-white sm:text-2xl">Roasted cashews</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-white/50 line-through">৳ 950</p>
-                    <p className="text-lg font-semibold text-white sm:text-xl">৳ 850</p>
-                  </div>
-                </div>
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.5 }}
-                className="absolute -bottom-6 -left-3 rounded-2xl border bg-card p-4 shadow-xl sm:-left-8"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-secondary">
-                    <Truck className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Delivery</p>
-                    <p className="text-sm font-semibold">Nationwide COD</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: -16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.65, duration: 0.5 }}
-                className="absolute -right-2 top-28 rounded-2xl border bg-card p-3 shadow-xl sm:-right-6"
-              >
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Star className="h-4 w-4 fill-accent text-accent" />
-                  4.9 / 5
-                </div>
-                <p className="text-xs text-muted-foreground">Loved by customers</p>
-              </motion.div>
-            </motion.div>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="border-y border-border/70 bg-card">
-          <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+        <section className="mt-8 border-y border-border/70 bg-card">
+          <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
             {trustPoints.map((point) => (
               <div key={point.title} className="flex items-center gap-3">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary">
@@ -279,49 +327,49 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="categories" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={stagger}
-            className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"
-          >
-            <div>
-              <motion.p variants={fadeUp} className="text-sm font-semibold text-primary">
-                Shop by category
-              </motion.p>
-              <motion.h2 variants={fadeUp} className="mt-2 text-3xl font-semibold sm:text-4xl">
-                Everyday goodness, thoughtfully picked
-              </motion.h2>
-            </div>
-            <motion.p variants={fadeUp} className="max-w-md text-sm text-muted-foreground">
-              From everyday snacking to fitness goals, find clean, honest food that fits your
-              routine.
-            </motion.p>
-          </motion.div>
+        <section id="categories" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <SectionHeading
+            eyebrow="Shop by category"
+            title="Find your everyday goodness"
+            description="Browse the pantry by category, from premium nuts to ready-to-gift boxes."
+            href="/shop"
+            linkLabel="View all products"
+          />
 
           <motion.div
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true, amount: 0.15 }}
+            viewport={{ once: true, amount: 0.2 }}
             variants={stagger}
-            className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            className="mt-8 flex gap-5 overflow-x-auto pb-3 sm:grid sm:grid-cols-3 sm:overflow-visible lg:grid-cols-6"
           >
-            {categories.map((category) => (
-              <motion.div key={category.name} variants={fadeUp} whileHover={{ y: -4 }}>
+            {displayCategories.map((category, index) => (
+              <motion.div key={category.slug} variants={fadeUp}>
                 <Link
                   to={`/shop?category=${category.slug}`}
-                  className="group block h-full rounded-2xl border bg-card p-6 transition-shadow hover:shadow-lg hover:shadow-primary/5"
+                  className="group flex w-[116px] shrink-0 flex-col items-center text-center sm:w-auto"
                 >
-                  <div className={cn('grid h-12 w-12 place-items-center rounded-xl', category.tone)}>
-                    <category.icon className="h-6 w-6" />
+                  <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border bg-card p-1.5 transition-all group-hover:-translate-y-1 group-hover:border-primary/30 group-hover:shadow-lg">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span
+                        className={cn(
+                          'grid h-full w-full place-items-center rounded-full',
+                          categoryTones[index % categoryTones.length],
+                        )}
+                      >
+                        <category.icon className="h-8 w-8" />
+                      </span>
+                    )}
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold">{category.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                    Browse
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <span className="mt-3 line-clamp-2 text-xs font-semibold sm:text-sm">
+                    {category.name}
                   </span>
                 </Link>
               </motion.div>
@@ -329,85 +377,125 @@ export default function HomePage() {
           </motion.div>
         </section>
 
-        <section id="why" className="border-y border-border/70 bg-secondary/40 py-16 sm:py-24">
+        <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+          <SectionHeading
+            eyebrow="Customer favourites"
+            title="Popular right now"
+            description="Freshly packed bestsellers that keep coming back to the pantry."
+            href="/shop"
+            linkLabel="See everything"
+          />
+
+          {isCatalogLoading ? (
+            <ProductGridSkeleton />
+          ) : products.length > 0 ? (
+            <motion.div
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.15 }}
+              variants={stagger}
+              className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              {products.slice(0, 4).map((product) => (
+                <motion.div key={product._id} variants={fadeUp}>
+                  <ProductCard product={product} />
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <div className="mt-7 rounded-2xl border bg-card px-6 py-12 text-center">
+              <h3 className="text-lg font-semibold">Products are being stocked</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Check back soon or browse the complete shop.
+              </p>
+              <Button asChild className="mt-5">
+                <Link to="/shop">Browse the shop</Link>
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {products.length > 4 && (
+          <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+            <SectionHeading
+              eyebrow="Just landed"
+              title="New additions to the pantry"
+              description="The latest packs and flavours added to the Yaqeen range."
+              href="/shop?sort=newest"
+              linkLabel="Shop new arrivals"
+            />
+            <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {products.slice(4, 8).map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-[2rem] bg-secondary/70 px-6 py-10 sm:px-10 sm:py-12">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-accent/30 blur-3xl" />
+            <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <Badge variant="soft" className="gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Bundle & save
+                </Badge>
+                <h2 className="mt-4 max-w-2xl text-3xl font-semibold sm:text-4xl">
+                  Build your own healthy pantry box
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                  Mix nuts, dates, diet foods and nutritional essentials into one order. We will
+                  pack it fresh and deliver it to your door.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg">
+                  <Link to="/shop">
+                    Shop combos
+                    <ArrowRight />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <a href={whatsappHref} target="_blank" rel="noreferrer">
+                    <Phone />
+                    Ask on WhatsApp
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="why" className="border-y border-border/70 bg-card py-14 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-              <motion.div
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, amount: 0.4 }}
-                variants={stagger}
-              >
-                <motion.p variants={fadeUp} className="text-sm font-semibold text-primary">
-                  The Yaqeen promise
-                </motion.p>
-                <motion.h2 variants={fadeUp} className="mt-2 text-3xl font-semibold sm:text-4xl">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+              <div>
+                <p className="text-sm font-semibold text-primary">The Yaqeen promise</p>
+                <h2 className="mt-2 text-3xl font-semibold sm:text-4xl">
                   Food you can feel good about
-                </motion.h2>
-                <motion.p variants={fadeUp} className="mt-4 text-muted-foreground">
+                </h2>
+                <p className="mt-4 text-muted-foreground">
                   Yaqeen means certainty. We built this store around one simple idea: you should
                   know exactly what you are eating, where it came from, and that it is worth the
                   price.
-                </motion.p>
-
-                <motion.div variants={fadeUp} className="mt-8 space-y-4">
-                  {[
-                    'Carefully sourced ingredients',
-                    'Freshly packed in small batches',
-                    'Clear pricing with no surprises',
-                  ].map((item) => (
-                    <div key={item} className="flex items-start gap-3">
-                      <div className="mt-0.5 grid h-5 w-5 place-items-center rounded-full bg-primary text-primary-foreground">
-                        <Check className="h-3 w-3" />
-                      </div>
-                      <span className="text-sm font-medium">{item}</span>
-                    </div>
-                  ))}
-                </motion.div>
-              </motion.div>
+                </p>
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  {
-                    title: 'Natural ingredients',
-                    description: 'No unnecessary fillers or artificial shortcuts.',
-                    icon: BadgeCheck,
-                  },
-                  {
-                    title: 'Honest value',
-                    description: 'Fair prices and clear pack sizes, every time.',
-                    icon: Wallet,
-                  },
-                  {
-                    title: 'Freshness first',
-                    description: 'Packed close to dispatch so it arrives fresh.',
-                    icon: Leaf,
-                  },
-                  {
-                    title: 'Real support',
-                    description: 'Talk to a real person on WhatsApp when you need help.',
-                    icon: Phone,
-                  },
-                ].map((item, index) => (
-                  <motion.div
-                    key={item.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.3 }}
-                    transition={{ delay: index * 0.08, duration: 0.45 }}
-                    className="rounded-2xl border bg-card p-6"
-                  >
-                    <item.icon className="h-6 w-6 text-primary" />
-                    <h3 className="mt-4 font-semibold">{item.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-                  </motion.div>
+                {promises.map((promise) => (
+                  <div key={promise.title} className="rounded-2xl border bg-background p-5">
+                    <promise.icon className="h-6 w-6 text-primary" />
+                    <h3 className="mt-4 font-semibold">{promise.title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{promise.description}</p>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section id="how" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+        <section id="how" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-semibold text-primary">Simple ordering</p>
             <h2 className="mt-2 text-3xl font-semibold sm:text-4xl">From ad to doorstep</h2>
@@ -416,27 +504,20 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
             {steps.map((step, index) => (
-              <motion.div
-                key={step.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.4 }}
-                transition={{ delay: index * 0.1, duration: 0.45 }}
-                className="relative rounded-2xl border bg-card p-6"
-              >
+              <div key={step.title} className="rounded-2xl border bg-card p-6">
                 <span className="font-display text-4xl font-semibold text-accent">
                   0{index + 1}
                 </span>
                 <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </section>
 
-        <section id="contact" className="px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
+        <section id="contact" className="px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-primary px-6 py-12 text-primary-foreground sm:px-10 sm:py-16">
             <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
               <div>
@@ -445,7 +526,7 @@ export default function HomePage() {
                   Tell us your goal. We will help you build the right box.
                 </h2>
                 <p className="mt-3 max-w-xl text-sm text-white/70 sm:text-base">
-                  Weight loss, gym fuel, healthy snacking or a gift box — message us on WhatsApp
+                  Weight loss, gym fuel, healthy snacking or a gift box - message us on WhatsApp
                   and we will guide you.
                 </p>
               </div>
@@ -475,3 +556,4 @@ export default function HomePage() {
     </SiteLayout>
   );
 }
+

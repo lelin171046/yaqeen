@@ -1,3 +1,5 @@
+import type { HeroCarouselSettings } from '@yaqeen/shared';
+
 export interface CategoryDto {
   _id: string;
   name: string;
@@ -71,6 +73,7 @@ export interface StoreSettingsDto {
   freeDeliveryThreshold: number;
   defaultDeliveryCharge: number;
   deliveryZones: Array<{ name: string; charge: number }>;
+  heroCarousel: HeroCarouselSettings;
 }
 
 export interface OrderItemDto {
@@ -87,6 +90,8 @@ export interface OrderItemDto {
 export interface OrderDto {
   orderNumber: string;
   status: string;
+  courier: string;
+  courierTrackingId: string;
   paymentStatus: string;
   paymentMethod: string;
   bkashTrxId: string;
@@ -183,11 +188,14 @@ export interface AdminSettingsDto {
   deliveryZones: Array<{ name: string; charge: number; isActive: boolean }>;
   adminAlertEmails: string[];
   adminAlertWhatsapp: string[];
+  emailProvider: 'resend' | 'smtp' | 'disabled';
+  emailConfigured: boolean;
   socialLinks: {
     facebook: string;
     instagram: string;
     whatsapp: string;
   };
+  heroCarousel: HeroCarouselSettings;
 }
 
 export interface OrderLinkDto {

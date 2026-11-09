@@ -13,6 +13,20 @@ export function useAdminSettings() {
   });
 }
 
+export function useSendTestEmail() {
+  return useMutation({
+    mutationFn: async (to: string) => {
+      const response = await api.post<{
+        sentTo: string;
+        provider: string;
+        messageId: string;
+      }>('/admin/settings/test-email', { to });
+
+      return response.data;
+    },
+  });
+}
+
 export function useUpdateAdminSettings() {
   const queryClient = useQueryClient();
 

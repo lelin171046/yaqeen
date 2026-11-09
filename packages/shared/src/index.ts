@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatBdt } from './money.js';
 
 export const APP_NAME = 'Yaqeen';
 export const APP_TAGLINE = 'Natural nuts, dry foods and nutrition you can trust.';
@@ -16,6 +17,7 @@ export const ORDER_STATUSES = [
   'PROCESSING',
   'SHIPPED',
   'DELIVERED',
+  'DELIVERY_FAILED',
   'CANCELLED',
   'RETURNED',
 ] as const;
@@ -25,11 +27,29 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'Pending',
   CONFIRMED: 'Confirmed',
-  PROCESSING: 'Processing',
-  SHIPPED: 'Shipped',
+  PROCESSING: 'Packing in Progress',
+  SHIPPED: 'Picked Up',
   DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled',
+  DELIVERY_FAILED: 'Delivery Failed',
+  CANCELLED: 'Order Cancelled',
   RETURNED: 'Returned',
+};
+
+export const ORDER_STATUS_UPDATE_OPTIONS = [
+  'PROCESSING',
+  'SHIPPED',
+  'DELIVERED',
+  'DELIVERY_FAILED',
+  'CANCELLED',
+] as const satisfies readonly OrderStatus[];
+
+export const ORDER_COURIERS = ['PATHAO', 'STEADFAST', 'REDX'] as const;
+export type OrderCourier = (typeof ORDER_COURIERS)[number];
+
+export const ORDER_COURIER_LABELS: Record<OrderCourier, string> = {
+  PATHAO: 'Pathao',
+  STEADFAST: 'Steadfast',
+  REDX: 'RedX',
 };
 
 export const PAYMENT_METHODS = ['COD', 'BKASH_MANUAL', 'BKASH_PGW'] as const;
@@ -116,10 +136,34 @@ export const trackOrderQuerySchema = z.object({
 
 export type TrackOrderQueryInput = z.infer<typeof trackOrderQuerySchema>;
 
-export const orderStatusUpdateSchema = z.object({
-  status: z.enum(ORDER_STATUSES),
-  note: z.string().trim().max(500).optional(),
-});
+export const orderStatusUpdateSchema = z
+  .object({
+    status: z.enum(ORDER_STATUSES),
+    note: z.string().trim().max(500).optional(),
+    courier: z.enum(ORDER_COURIERS).optional(),
+    courierTrackingId: z.string().trim().max(80).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.status !== 'SHIPPED') {
+      return;
+    }
+
+    if (!value.courier) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Select a courier',
+        path: ['courier'],
+      });
+    }
+
+    if (!value.courierTrackingId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Courier tracking ID is required',
+        path: ['courierTrackingId'],
+      });
+    }
+  });
 
 export type OrderStatusUpdateInput = z.infer<typeof orderStatusUpdateSchema>;
 
@@ -265,6 +309,122 @@ export type DashboardQueryInput = z.infer<typeof dashboardQuerySchema>;
 
 const optionalUrlSchema = z.string().trim().url('Enter a valid URL').optional().or(z.literal(''));
 
+export const HERO_SLIDE_THEME_VALUES = [
+  'forest',
+  'amber',
+  'navy',
+  'berry',
+  'slate',
+] as const;
+
+export type HeroSlideTheme = (typeof HERO_SLIDE_THEME_VALUES)[number];
+
+export const HERO_SLIDE_THEMES: Array<{
+  value: HeroSlideTheme;
+  label: string;
+}> = [
+  { value: 'forest', label: 'Forest green' },
+  { value: 'amber', label: 'Warm amber' },
+  { value: 'navy', label: 'Deep navy' },
+  { value: 'berry', label: 'Berry red' },
+  { value: 'slate', label: 'Cool slate' },
+];
+
+export const HERO_SLIDE_THEME_GRADIENTS: Record<HeroSlideTheme, string> = {
+  forest: 'linear-gradient(135deg, #052e16 0%, #166534 48%, #0f766e 100%)',
+  amber: 'linear-gradient(135deg, #3b1d0f 0%, #7c3f1d 48%, #c07a32 100%)',
+  navy: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 48%, #0f766e 100%)',
+  berry: 'linear-gradient(135deg, #4a0d2d 0%, #9d174d 48%, #be185d 100%)',
+  slate: 'linear-gradient(135deg, #1f2937 0%, #334155 48%, #0f766e 100%)',
+};
+
+const storefrontLinkSchema = z
+  .string()
+  .trim()
+  .min(1, 'Button link is required')
+  .max(300)
+  .refine(
+    (value) =>
+      value.startsWith('/') ||
+      value.startsWith('#') ||
+      /^https?:\/\//i.test(value) ||
+      /^mailto:/i.test(value) ||
+      /^tel:/i.test(value),
+    'Use a store path or full URL',
+  );
+
+export const heroSlideSettingsSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  eyebrow: z.string().trim().max(60).default(''),
+  title: z.string().trim().min(2, 'Slide title is required').max(140),
+  description: z.string().trim().max(500).default(''),
+  ctaLabel: z.string().trim().min(1, 'Button text is required').max(40),
+  ctaHref: storefrontLinkSchema,
+  badge: z.string().trim().max(40).default(''),
+  image: optionalUrlSchema,
+  imageAlt: z.string().trim().max(180).default(''),
+  theme: z.enum(HERO_SLIDE_THEME_VALUES).default('forest'),
+  isActive: z.boolean().default(true),
+});
+
+export const heroCarouselSettingsSchema = z.object({
+  autoplaySeconds: z.coerce.number().min(0).max(30).default(6),
+  pauseOnHover: z.boolean().default(true),
+  slides: z.array(heroSlideSettingsSchema).max(8).default([]),
+});
+
+export type HeroSlideSettings = z.infer<typeof heroSlideSettingsSchema>;
+export type HeroCarouselSettings = z.infer<typeof heroCarouselSettingsSchema>;
+
+export const DEFAULT_HERO_CAROUSEL: HeroCarouselSettings = {
+  autoplaySeconds: 6,
+  pauseOnHover: true,
+  slides: [
+    {
+      id: 'fresh-nuts',
+      eyebrow: 'Freshly packed',
+      title: 'Nuts, seeds and dry fruits you can trust',
+      description:
+        'Premium kaju, badam, pista, dates and everyday nutrition, packed fresh in small batches and delivered across Bangladesh.',
+      ctaLabel: 'Shop nuts & seeds',
+      ctaHref: '/shop?category=nuts-seeds',
+      badge: 'Up to 15% off',
+      image: '',
+      imageAlt: '',
+      theme: 'forest',
+      isActive: true,
+    },
+    {
+      id: 'gift-boxes',
+      eyebrow: 'Gift ready',
+      title: 'Thoughtful gift boxes for every occasion',
+      description:
+        'Beautifully packed combinations of premium nuts, dates and healthy treats, ready to send to someone you care about.',
+      ctaLabel: 'Explore gift boxes',
+      ctaHref: '/shop?category=gift-boxes',
+      badge: 'New collection',
+      image: '',
+      imageAlt: '',
+      theme: 'amber',
+      isActive: true,
+    },
+    {
+      id: 'free-delivery',
+      eyebrow: 'Free delivery',
+      title: `Free delivery on orders over ${formatBdt(2000)}`,
+      description:
+        'Stock your pantry with clean, honest essentials and enjoy free nationwide delivery. Cash on delivery available.',
+      ctaLabel: 'Start shopping',
+      ctaHref: '/shop',
+      badge: 'Nationwide',
+      image: '',
+      imageAlt: '',
+      theme: 'navy',
+      isActive: true,
+    },
+  ],
+};
+
 export const settingsUpdateSchema = z.object({
   storeName: z.string().trim().min(2, 'Store name is required').max(120).optional(),
   supportPhone: z.string().trim().max(20).optional().or(z.literal('')),
@@ -291,6 +451,7 @@ export const settingsUpdateSchema = z.object({
       whatsapp: optionalUrlSchema,
     })
     .optional(),
+  heroCarousel: heroCarouselSettingsSchema.optional(),
 });
 
 export type SettingsUpdateInput = z.infer<typeof settingsUpdateSchema>;
