@@ -1,38 +1,32 @@
-import { BRAND_LOGO_URL } from '@yaqeen/shared';
-import { Menu, Search, ShoppingBag, X } from 'lucide-react';
+import { BRAND_LOGO_URL } from '@anando-deal/shared';
+import { Heart, Menu, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
+import { SearchForm } from '@/components/search-form';
 import { Button } from '@/components/ui/button';
 import { useCategories } from '@/hooks/use-catalog';
 import { cn } from '@/lib/utils';
-import { getWhatsAppHref } from '@/lib/whatsapp';
 import { cartCount, useCart } from '@/stores/cart';
+import { useWishlist } from '@/stores/wishlist';
 
 const navLinks = [
   { to: '/shop', label: 'Shop' },
   { to: '/track', label: 'Track order' },
+  { to: '/contact', label: 'Contact' },
 ];
 
 export function SiteHeader() {
-  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const count = useCart((state) => cartCount(state.items));
+  const wishlistCount = useWishlist((state) => state.items.length);
   const { data: categories } = useCategories();
-
-  const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = search.trim();
-    navigate(query ? `/shop?search=${encodeURIComponent(query)}` : '/shop');
-    setMenuOpen(false);
-  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <img src={BRAND_LOGO_URL} alt="" className="h-9 w-9 rounded-full" />
-          <span className="font-display text-xl font-semibold">Yaqeen</span>
+          <span className="font-display text-xl font-semibold">Anando Deal</span>
         </Link>
 
         <nav className="ml-6 hidden items-center gap-6 text-sm font-medium md:flex">
@@ -47,36 +41,31 @@ export function SiteHeader() {
               {link.label}
             </NavLink>
           ))}
-          <a
-            href={getWhatsAppHref('Hi Yaqeen, I need help with an order.')}
-            target="_blank"
-            rel="noreferrer"
-            className="transition-colors hover:text-primary"
-          >
-            Contact
-          </a>
         </nav>
 
-        <form onSubmit={submitSearch} className="ml-auto hidden lg:block">
-          <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search nuts, dates, diet foods"
-              className="w-48 bg-transparent text-sm outline-none placeholder:text-muted-foreground xl:w-56"
-              aria-label="Search products"
-            />
-          </div>
-        </form>
+        <SearchForm
+          className="ml-auto hidden lg:block"
+          inputClassName="w-48 xl:w-56"
+          placeholder="Search products"
+        />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2 lg:ml-3">
+          <Button variant="ghost" size="icon" className="relative" asChild>
+            <Link to="/wishlist" aria-label={`Wishlist with ${wishlistCount} items`}>
+              <Heart />
+              {wishlistCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
+          </Button>
+
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link to="/checkout" aria-label={`Cart with ${count} items`}>
               <ShoppingBag />
               {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
+                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
                   {count}
                 </span>
               )}
@@ -131,17 +120,11 @@ export function SiteHeader() {
 
       {menuOpen && (
         <div className="border-t border-border/70 bg-background px-4 py-4 md:hidden">
-          <form onSubmit={submitSearch} className="mb-4 flex items-center gap-2 rounded-full border bg-card px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              aria-label="Search products"
-            />
-          </form>
+          <SearchForm
+            className="mb-4"
+            placeholder="Search products"
+            onSubmitted={() => setMenuOpen(false)}
+          />
           <nav className="flex flex-col gap-1 text-sm font-medium">
             {navLinks.map((link) => (
               <Link
@@ -153,6 +136,13 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              to="/wishlist"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 hover:bg-muted"
+            >
+              Wishlist ({wishlistCount})
+            </Link>
             <Link
               to="/checkout"
               onClick={() => setMenuOpen(false)}

@@ -1,12 +1,12 @@
 services:
   mongo:
     image: mongo:8.0
-    container_name: yaqeen-mongo
+    container_name: anando-deal-mongo
     restart: unless-stopped
     ports:
       - '27017:27017'
     volumes:
-      - yaqeen-mongo-data:/data/db
+      - anando-deal-mongo-data:/data/db
     healthcheck:
       test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 10s
@@ -14,4 +14,4 @@ services:
       retries: 5
 
 volumes:
-  yaqeen-mongo-data:
+  anando-deal-mongo-data:

@@ -17,6 +17,9 @@ const variantSchema = new Schema(
     compareAtPrice: { type: Number, min: 0 },
     stock: { type: Number, default: 0, min: 0 },
     sku: { type: String, required: true, trim: true, uppercase: true, maxlength: 60 },
+    flashPrice: { type: Number, min: 0, default: undefined },
+    flashStartsAt: { type: Date, default: undefined },
+    flashEndsAt: { type: Date, default: undefined },
   },
   { _id: true },
 );

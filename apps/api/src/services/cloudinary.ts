@@ -47,9 +47,7 @@ function uploadBuffer(
         folder,
         resource_type: resourceType,
         transformation:
-          resourceType === 'image'
-            ? [{ quality: 'auto', fetch_format: 'auto' }]
-            : undefined,
+          resourceType === 'image' ? [{ quality: 'auto', fetch_format: 'auto' }] : undefined,
       },
       (error, result) => {
         if (error || !result) {
@@ -74,14 +72,14 @@ function uploadBuffer(
 
 export function uploadImageBuffer(
   buffer: Buffer,
-  folder = 'yaqeen/products',
+  folder = 'anando-deal/products',
 ): Promise<UploadedAsset> {
   return uploadBuffer(buffer, 'image', folder);
 }
 
 export function uploadVideoBuffer(
   buffer: Buffer,
-  folder = 'yaqeen/products/videos',
+  folder = 'anando-deal/products/videos',
 ): Promise<UploadedAsset> {
   return uploadBuffer(buffer, 'video', folder);
 }

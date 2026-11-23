@@ -14,14 +14,14 @@ const customer = {
 };
 
 async function createProduct(agent: Awaited<ReturnType<typeof createAdminAgent>>) {
-  const category = await agent.post('/api/admin/categories').send({ name: 'Nuts' });
+  const category = await agent.post('/api/admin/categories').send({ name: 'Winter' });
   const product = await agent.post('/api/admin/products').send({
-    name: 'Premium Cashews',
-    description: 'Hand-picked creamy cashews packed fresh in small batches.',
+    name: 'Portable Room Heater',
+    description: 'Compact heater for bedrooms and small spaces.',
     categoryId: category.body.category._id,
     variants: [
-      { label: '250g', grams: 250, price: 450, stock: 25 },
-      { label: '500g', grams: 500, price: 850, stock: 10 },
+      { label: '1 L', grams: 1000, price: 450, stock: 25 },
+      { label: '2 L', grams: 2000, price: 850, stock: 10 },
     ],
   });
 
@@ -51,11 +51,13 @@ describe('public orders', () => {
     const product = await createProduct(agent);
     const variantSku = product.variants[0].sku as string;
 
-    const created = await request(app).post('/api/orders').send(
-      orderBody(product._id, variantSku, 2, {
-        idempotencyKey: 'checkout-test-0001',
-      }),
-    );
+    const created = await request(app)
+      .post('/api/orders')
+      .send(
+        orderBody(product._id, variantSku, 2, {
+          idempotencyKey: 'checkout-test-0001',
+        }),
+      );
 
     expect(created.status).toBe(201);
     expect(created.body.order).toMatchObject({
@@ -66,12 +68,12 @@ describe('public orders', () => {
       deliveryCharge: 80,
       total: 980,
     });
-    expect(created.body.order.orderNumber).toMatch(/^YQ-\d{6}-\d{4}$/);
+    expect(created.body.order.orderNumber).toMatch(/^AD-\d{6}-\d{4}$/);
     expect(created.body.order.customer.phone).toBe('01712345678');
 
     const orderNumber = created.body.order.orderNumber as string;
 
-    const detail = await request(app).get('/api/products/premium-cashews');
+    const detail = await request(app).get('/api/products/portable-room-heater');
     expect(detail.body.product.variants[0].stock).toBe(23);
     expect(detail.body.product.totalStock).toBe(33);
 
@@ -82,7 +84,7 @@ describe('public orders', () => {
     expect(repeated.status).toBe(201);
     expect(repeated.body.order.orderNumber).toBe(orderNumber);
 
-    const afterRepeat = await request(app).get('/api/products/premium-cashews');
+    const afterRepeat = await request(app).get('/api/products/portable-room-heater');
     expect(afterRepeat.body.product.variants[0].stock).toBe(23);
 
     const tracked = await request(app)
@@ -114,6 +116,46 @@ describe('public orders', () => {
     expect(created.body.order.total).toBe(2250);
   });
 
+  it('charges the active flash price and records the real discount', async () => {
+    const agent = await createAdminAgent(app);
+    const category = await agent.post('/api/admin/categories').send({ name: 'Deals' });
+    const created = await agent.post('/api/admin/products').send({
+      name: 'Flash Deal Item',
+      description: 'Limited-time product used for checkout validation.',
+      categoryId: category.body.category._id,
+      variants: [
+        {
+          label: 'Standard',
+          price: 500,
+          compareAtPrice: 600,
+          flashPrice: 400,
+          flashStartsAt: new Date(Date.now() - 60_000).toISOString(),
+          flashEndsAt: new Date(Date.now() + 3_600_000).toISOString(),
+          stock: 10,
+        },
+      ],
+    });
+    const product = created.body.product as { _id: string; variants: Array<{ sku: string }> };
+
+    const response = await request(app)
+      .post('/api/orders')
+      .send(orderBody(product._id, product.variants[0].sku, 2));
+
+    expect(response.status).toBe(201);
+    expect(response.body.order).toMatchObject({
+      subtotal: 800,
+      deliveryCharge: 80,
+      discount: 400,
+      total: 480,
+      items: [
+        {
+          unitPrice: 400,
+          lineTotal: 800,
+        },
+      ],
+    });
+  });
+
   it('rejects manual bKash without a transaction id', async () => {
     const agent = await createAdminAgent(app);
     const product = await createProduct(agent);
@@ -130,20 +172,62 @@ describe('public orders', () => {
     const agent = await createAdminAgent(app);
     const product = await createProduct(agent);
 
-    const response = await request(app).post('/api/orders').send(
-      orderBody(product._id, product.variants[0].sku, 1, {
-        paymentMethod: 'BKASH_MANUAL',
-        bkashTrxId: 'TRX123456',
-      }),
-    );
+    const response = await request(app)
+      .post('/api/orders')
+      .send(
+        orderBody(product._id, product.variants[0].sku, 1, {
+          paymentMethod: 'BKASH_MANUAL',
+          bkashTrxId: 'TRX123456',
+        }),
+      );
 
     expect(response.status).toBe(201);
     expect(response.body.order).toMatchObject({
       paymentMethod: 'BKASH_MANUAL',
       paymentStatus: 'UNPAID',
+      paymentTrxId: 'TRX123456',
       bkashTrxId: 'TRX123456',
     });
   });
+
+  it.each(['NAGAD_MANUAL', 'ROCKET_MANUAL'] as const)(
+    'rejects %s without a transaction id',
+    async (paymentMethod) => {
+      const agent = await createAdminAgent(app);
+      const product = await createProduct(agent);
+
+      const response = await request(app)
+        .post('/api/orders')
+        .send(orderBody(product._id, product.variants[0].sku, 1, { paymentMethod }));
+
+      expect(response.status).toBe(422);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    },
+  );
+
+  it.each(['NAGAD_MANUAL', 'ROCKET_MANUAL'] as const)(
+    'accepts %s with a transaction id',
+    async (paymentMethod) => {
+      const agent = await createAdminAgent(app);
+      const product = await createProduct(agent);
+
+      const response = await request(app)
+        .post('/api/orders')
+        .send(
+          orderBody(product._id, product.variants[0].sku, 1, {
+            paymentMethod,
+            paymentTrxId: `TRX-${paymentMethod}`,
+          }),
+        );
+
+      expect(response.status).toBe(201);
+      expect(response.body.order).toMatchObject({
+        paymentMethod,
+        paymentStatus: 'UNPAID',
+        paymentTrxId: `TRX-${paymentMethod}`,
+      });
+    },
+  );
 
   it('rejects orders above available stock without creating an order', async () => {
     const agent = await createAdminAgent(app);
@@ -156,7 +240,7 @@ describe('public orders', () => {
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('CONFLICT');
 
-    const detail = await request(app).get('/api/products/premium-cashews');
+    const detail = await request(app).get('/api/products/portable-room-heater');
     expect(detail.body.product.variants[0].stock).toBe(25);
   });
 
@@ -179,13 +263,11 @@ describe('public orders', () => {
     expect(missingCourier.status).toBe(422);
     expect(missingCourier.body.code).toBe('VALIDATION_ERROR');
 
-    const pickedUp = await agent
-      .patch(`/api/admin/orders/${orderNumber}/status`)
-      .send({
-        status: 'SHIPPED',
-        courier: 'PATHAO',
-        courierTrackingId: 'PAT-123456789',
-      });
+    const pickedUp = await agent.patch(`/api/admin/orders/${orderNumber}/status`).send({
+      status: 'SHIPPED',
+      courier: 'PATHAO',
+      courierTrackingId: 'PAT-123456789',
+    });
 
     expect(pickedUp.status).toBe(200);
     expect(pickedUp.body.order).toMatchObject({
@@ -201,7 +283,7 @@ describe('public orders', () => {
     expect(failed.status).toBe(200);
     expect(failed.body.order.status).toBe('DELIVERY_FAILED');
 
-    const restored = await request(app).get('/api/products/premium-cashews');
+    const restored = await request(app).get('/api/products/portable-room-heater');
     expect(restored.body.product.variants[0].stock).toBe(25);
   });
 
@@ -210,7 +292,7 @@ describe('public orders', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.settings).toMatchObject({
-      storeName: 'Yaqeen',
+      storeName: 'Anando Deal',
       freeDeliveryThreshold: 2000,
       defaultDeliveryCharge: 80,
     });

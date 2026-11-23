@@ -1,4 +1,18 @@
-import type { HeroCarouselSettings } from '@yaqeen/shared';
+import type {
+  DeliveryBenefitSettings,
+  HeroCarouselSettings,
+  SupportMessageStatus,
+  SupportTopic,
+} from '@anando-deal/shared';
+
+type HeroCarouselDto = Omit<HeroCarouselSettings, 'slides'> & {
+  slides: Array<
+    Omit<HeroCarouselSettings['slides'][number], 'startsAt' | 'endsAt'> & {
+      startsAt?: string;
+      endsAt?: string;
+    }
+  >;
+};
 
 export interface CategoryDto {
   _id: string;
@@ -24,6 +38,13 @@ export interface ProductVariantDto {
   compareAtPrice?: number;
   stock: number;
   sku: string;
+  flashPrice?: number;
+  flashStartsAt?: string;
+  flashEndsAt?: string;
+  effectivePrice: number;
+  discountPercent: number;
+  isOnSale: boolean;
+  saleEndsAt?: string;
 }
 
 export interface ProductDto {
@@ -38,7 +59,9 @@ export interface ProductDto {
   tags: string[];
   variants: ProductVariantDto[];
   basePrice: number;
+  effectiveBasePrice: number;
   totalStock: number;
+  salesCount: number;
   isFeatured: boolean;
   isActive: boolean;
   badge: string;
@@ -70,10 +93,15 @@ export interface StoreSettingsDto {
   supportPhone: string;
   supportEmail: string;
   bkashMerchantNumber: string;
+  nagadMerchantNumber: string;
+  rocketMerchantNumber: string;
   freeDeliveryThreshold: number;
   defaultDeliveryCharge: number;
   deliveryZones: Array<{ name: string; charge: number }>;
-  heroCarousel: HeroCarouselSettings;
+  deliveryBenefits: DeliveryBenefitSettings[];
+  heroCarousel: HeroCarouselDto;
+  flashDealsEnabled: boolean;
+  featuredCategories: Array<{ id: string; name: string; slug: string; image: string }>;
 }
 
 export interface OrderItemDto {
@@ -94,6 +122,7 @@ export interface OrderDto {
   courierTrackingId: string;
   paymentStatus: string;
   paymentMethod: string;
+  paymentTrxId: string;
   bkashTrxId: string;
   subtotal: number;
   deliveryCharge: number;
@@ -183,9 +212,13 @@ export interface AdminSettingsDto {
   supportPhone: string;
   supportEmail: string;
   bkashMerchantNumber: string;
+  nagadMerchantNumber: string;
+  rocketMerchantNumber: string;
   freeDeliveryThreshold: number;
   defaultDeliveryCharge: number;
   deliveryZones: Array<{ name: string; charge: number; isActive: boolean }>;
+  featuredCategoryIds: string[];
+  deliveryBenefits: DeliveryBenefitSettings[];
   adminAlertEmails: string[];
   adminAlertWhatsapp: string[];
   emailProvider: 'resend' | 'smtp' | 'disabled';
@@ -195,7 +228,33 @@ export interface AdminSettingsDto {
     instagram: string;
     whatsapp: string;
   };
-  heroCarousel: HeroCarouselSettings;
+  heroCarousel: HeroCarouselDto;
+  flashDealsEnabled: boolean;
+}
+
+export interface SupportReplyDto {
+  id: string;
+  body: string;
+  sentAt: string;
+  provider: string;
+}
+
+export interface SupportMessageDto {
+  id: string;
+  ticket: string;
+  name: string;
+  email: string;
+  phone: string;
+  topic: SupportTopic;
+  orderNumber: string;
+  message: string;
+  status: SupportMessageStatus;
+  deliveryStatus: 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
+  deliveryError: string;
+  acknowledgementStatus: 'NOT_SENT' | 'SENT' | 'FAILED';
+  replies: SupportReplyDto[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OrderLinkDto {

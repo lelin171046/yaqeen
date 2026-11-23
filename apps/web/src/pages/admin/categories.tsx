@@ -1,14 +1,8 @@
-import { categoryInputSchema } from '@yaqeen/shared';
+import { categoryInputSchema } from '@anando-deal/shared';
 import { Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  EmptyState,
-  ErrorBlock,
-  Field,
-  LoadingBlock,
-  PageHeader,
-} from '@/components/admin/ui';
+import { EmptyState, ErrorBlock, Field, LoadingBlock, PageHeader } from '@/components/admin/ui';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,8 +105,7 @@ export default function AdminCategoriesPage() {
         toast.success(editingId ? 'Category updated' : 'Category created');
         closeForm();
       },
-      onError: (mutationError: unknown) =>
-        toast.error(getApiErrorMessage(mutationError)),
+      onError: (mutationError: unknown) => toast.error(getApiErrorMessage(mutationError)),
     };
 
     if (editingId) {
@@ -123,11 +116,7 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = (category: CategoryDto) => {
-    if (
-      !window.confirm(
-        `Delete "${category.name}"? Categories with products cannot be deleted.`,
-      )
-    ) {
+    if (!window.confirm(`Delete "${category.name}"? Categories with products cannot be deleted.`)) {
       return;
     }
 
@@ -195,7 +184,9 @@ export default function AdminCategoriesPage() {
               <Input
                 id="category-name"
                 value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, name: event.target.value }))
+                }
                 placeholder="Nuts & Seeds"
               />
             </Field>
@@ -208,8 +199,10 @@ export default function AdminCategoriesPage() {
               <Input
                 id="category-slug"
                 value={form.slug}
-                onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
-                placeholder="nuts-seeds"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, slug: event.target.value }))
+                }
+                placeholder="winter-essentials"
               />
             </Field>
             <Field
@@ -225,10 +218,15 @@ export default function AdminCategoriesPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, description: event.target.value }))
                 }
-                placeholder="Cashews, almonds, pistachios, walnuts and everyday seeds."
+                placeholder="Hot water bottles, room heaters, blankets and winter must-haves."
               />
             </Field>
-            <Field label="Image URL" htmlFor="category-image" error={errors.image} className="sm:col-span-2">
+            <Field
+              label="Image URL"
+              htmlFor="category-image"
+              error={errors.image}
+              className="sm:col-span-2"
+            >
               <div className="flex gap-2">
                 <Input
                   id="category-image"
@@ -349,7 +347,10 @@ export default function AdminCategoriesPage() {
                     <td className="px-5 py-3">{category.sortOrder}</td>
                     <td className="px-5 py-3">
                       {category.isActive ? (
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                        <Badge
+                          variant="outline"
+                          className="border-black bg-secondary text-foreground"
+                        >
                           Active
                         </Badge>
                       ) : (

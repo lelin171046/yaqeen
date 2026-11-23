@@ -5,7 +5,7 @@ import {
   orderPaymentUpdateSchema,
   orderStatusUpdateSchema,
   trackOrderQuerySchema,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import { Router } from 'express';
 import { AppError } from '../../utils/app-error.js';
 import { asyncHandler } from '../../utils/async-handler.js';

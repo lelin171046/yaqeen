@@ -45,7 +45,7 @@ export default function TrackPage() {
                 id="orderNumber"
                 value={orderNumber}
                 onChange={(event) => setOrderNumber(event.target.value)}
-                placeholder="YQ-XXXXXX-XXXX"
+                placeholder="AD-XXXXXX-XXXX"
                 required
               />
             </div>

@@ -6,14 +6,14 @@ import { createAdminAgent } from './helpers.js';
 const app = createApp();
 
 const productInput = (categoryId: string) => ({
-  name: 'Premium Cashews',
-  description: 'Hand-picked creamy cashews packed fresh in small batches.',
-  shortDescription: 'Creamy cashews',
+  name: 'Portable Room Heater',
+  description: 'Compact heater for bedrooms and small spaces.',
+  shortDescription: 'Portable winter warmth',
   categoryId,
-  tags: ['cashew', 'nuts'],
+  tags: ['heater', 'winter'],
   variants: [
-    { label: '250g', grams: 250, price: 450, stock: 25 },
-    { label: '500g', grams: 500, price: 850, stock: 10 },
+    { label: '1 L', grams: 1000, price: 450, stock: 25 },
+    { label: '2 L', grams: 2000, price: 850, stock: 10 },
   ],
 });
 
@@ -22,24 +22,24 @@ describe('catalog', () => {
     const agent = await createAdminAgent(app);
 
     const created = await agent.post('/api/admin/categories').send({
-      name: 'Nuts & Seeds',
-      description: 'Cashews, almonds and more.',
+      name: 'Winter Essentials',
+      description: 'Heaters, blankets and winter must-haves.',
     });
 
     expect(created.status).toBe(201);
-    expect(created.body.category.slug).toBe('nuts-seeds');
+    expect(created.body.category.slug).toBe('winter-essentials');
 
     const list = await request(app).get('/api/categories');
     expect(list.status).toBe(200);
     expect(list.body.items).toHaveLength(1);
-    expect(list.body.items[0].name).toBe('Nuts & Seeds');
+    expect(list.body.items[0].name).toBe('Winter Essentials');
   });
 
   it('creates, reads, updates and soft-deletes a product', async () => {
     const agent = await createAdminAgent(app);
 
     const category = await agent.post('/api/admin/categories').send({
-      name: 'Nuts',
+      name: 'Winter',
     });
     const categoryId = category.body.category._id as string;
 
@@ -47,21 +47,21 @@ describe('catalog', () => {
 
     expect(created.status).toBe(201);
     expect(created.body.product).toMatchObject({
-      slug: 'premium-cashews',
+      slug: 'portable-room-heater',
       basePrice: 450,
       totalStock: 35,
       isActive: true,
     });
     expect(created.body.product.variants).toHaveLength(2);
-    expect(created.body.product.variants[0].sku).toBe('PREMIUM-CASHEWS-250G-1');
+    expect(created.body.product.variants[0].sku).toBe('PORTABLE-ROOM-HEATER-1000G-1');
 
     const productId = created.body.product._id as string;
 
-    const publicDetail = await request(app).get('/api/products/premium-cashews');
+    const publicDetail = await request(app).get('/api/products/portable-room-heater');
     expect(publicDetail.status).toBe(200);
-    expect(publicDetail.body.product.category.slug).toBe('nuts');
+    expect(publicDetail.body.product.category.slug).toBe('winter');
 
-    const search = await request(app).get('/api/products').query({ search: 'cashew' });
+    const search = await request(app).get('/api/products').query({ search: 'heater' });
     expect(search.status).toBe(200);
     expect(search.body.pagination.total).toBe(1);
 
@@ -71,7 +71,7 @@ describe('catalog', () => {
     expect(updated.status).toBe(200);
     expect(updated.body.product.badge).toBe('Sold out');
 
-    const hidden = await request(app).get('/api/products/premium-cashews');
+    const hidden = await request(app).get('/api/products/portable-room-heater');
     expect(hidden.status).toBe(404);
 
     const adminList = await agent.get('/api/admin/products');
@@ -86,23 +86,61 @@ describe('catalog', () => {
     expect(afterDelete.body.product.isActive).toBe(false);
   });
 
+  it('exposes active flash sales with real dates and effective prices', async () => {
+    const agent = await createAdminAgent(app);
+    const category = await agent.post('/api/admin/categories').send({ name: 'Flash Deals' });
+    const categoryId = category.body.category._id as string;
+    const startsAt = new Date(Date.now() - 60_000).toISOString();
+    const endsAt = new Date(Date.now() + 3_600_000).toISOString();
+
+    const created = await agent.post('/api/admin/products').send({
+      ...productInput(categoryId),
+      name: 'Flash Deal Item',
+      variants: [
+        {
+          label: 'Standard',
+          price: 500,
+          compareAtPrice: 600,
+          flashPrice: 400,
+          flashStartsAt: startsAt,
+          flashEndsAt: endsAt,
+          stock: 5,
+        },
+      ],
+    });
+
+    expect(created.status).toBe(201);
+
+    const flashList = await request(app).get('/api/products').query({ flashSale: true });
+    expect(flashList.status).toBe(200);
+    expect(flashList.body.pagination.total).toBe(1);
+    expect(flashList.body.items[0].variants[0]).toMatchObject({
+      effectivePrice: 400,
+      discountPercent: 33,
+      isOnSale: true,
+      saleEndsAt: endsAt,
+    });
+    expect(flashList.body.items[0].effectiveBasePrice).toBe(400);
+
+    const allProducts = await request(app).get('/api/products');
+    expect(allProducts.body.pagination.total).toBe(1);
+  });
+
   it('rejects duplicate variant SKUs across products', async () => {
     const agent = await createAdminAgent(app);
 
-    const category = await agent.post('/api/admin/categories').send({ name: 'Nuts' });
+    const category = await agent.post('/api/admin/categories').send({ name: 'Winter' });
     const categoryId = category.body.category._id as string;
-    const sharedSku = [
-      { label: '250g', grams: 250, price: 450, stock: 5, sku: 'SHARED-SKU-250' },
-    ];
+    const sharedSku = [{ label: '1 L', grams: 1000, price: 450, stock: 5, sku: 'SHARED-SKU-STD' }];
 
     await agent
       .post('/api/admin/products')
-      .send({ ...productInput(categoryId), name: 'Cashews One', variants: sharedSku })
+      .send({ ...productInput(categoryId), name: 'Heater One', variants: sharedSku })
       .expect(201);
 
     const duplicate = await agent
       .post('/api/admin/products')
-      .send({ ...productInput(categoryId), name: 'Cashews Two', variants: sharedSku });
+      .send({ ...productInput(categoryId), name: 'Heater Two', variants: sharedSku });
 
     expect(duplicate.status).toBe(409);
   });
@@ -113,7 +151,7 @@ describe('catalog', () => {
     const response = await agent
       .post('/api/admin/uploads/image')
       .attach('file', Buffer.from('fake-image'), {
-        filename: 'cashew.png',
+        filename: 'heater.png',
         contentType: 'image/png',
       });
 

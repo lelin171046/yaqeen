@@ -1,4 +1,4 @@
-import { BRAND_LOGO_URL } from '@yaqeen/shared';
+import { BRAND_LOGO_URL } from '@anando-deal/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -139,7 +139,7 @@ export function OfferCarousel({
                   <div className="grid aspect-square place-items-center rounded-[1.6rem] bg-white/10">
                     <img
                       src={BRAND_LOGO_URL}
-                      alt="Yaqeen"
+                      alt="Anando Deal"
                       className="h-36 w-36 rounded-full shadow-2xl"
                     />
                   </div>

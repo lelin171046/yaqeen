@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ApiHealth } from '@yaqeen/shared';
+import type { ApiHealth } from '@anando-deal/shared';
 import { api } from '@/lib/api';
 
 export function useHealth() {

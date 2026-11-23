@@ -1,13 +1,5 @@
-import { productInputSchema } from '@yaqeen/shared';
-import {
-  ArrowLeft,
-  ImagePlus,
-  Loader2,
-  Plus,
-  Trash2,
-  Upload,
-  Video,
-} from 'lucide-react';
+import { productInputSchema } from '@anando-deal/shared';
+import { ArrowLeft, ImagePlus, Loader2, Plus, Trash2, Upload, Video } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -17,11 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAdminCategories } from '@/hooks/use-admin-categories';
-import {
-  useAdminProduct,
-  useCreateProduct,
-  useUpdateProduct,
-} from '@/hooks/use-admin-products';
+import { useAdminProduct, useCreateProduct, useUpdateProduct } from '@/hooks/use-admin-products';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { uploadProductImage, uploadProductVideo } from '@/lib/admin-upload';
 import type { ProductDto } from '@/lib/types';
@@ -39,15 +27,10 @@ interface VariantRow {
   compareAtPrice: string;
   stock: string;
   sku: string;
-}
-
-interface NutritionRow {
-  calories: string;
-  protein: string;
-  carbs: string;
-  fat: string;
-  fiber: string;
-  sugar: string;
+  flashDeal: boolean;
+  flashPrice: string;
+  flashStartsAt: string;
+  flashEndsAt: string;
 }
 
 const emptyVariant: VariantRow = {
@@ -57,15 +40,10 @@ const emptyVariant: VariantRow = {
   compareAtPrice: '',
   stock: '0',
   sku: '',
-};
-
-const emptyNutrition: NutritionRow = {
-  calories: '',
-  protein: '',
-  carbs: '',
-  fat: '',
-  fiber: '',
-  sugar: '',
+  flashDeal: false,
+  flashPrice: '',
+  flashStartsAt: '',
+  flashEndsAt: '',
 };
 
 function toNumber(value: string): number | undefined {
@@ -81,19 +59,19 @@ function numberToString(value: number | undefined): string {
   return value === undefined ? '' : String(value);
 }
 
-function toNutritionRow(product?: ProductDto): NutritionRow {
-  if (!product?.nutrition) {
-    return { ...emptyNutrition };
+function toDateTimeLocal(value: string | undefined): string {
+  if (!value) {
+    return '';
   }
 
-  return {
-    calories: numberToString(product.nutrition.calories),
-    protein: numberToString(product.nutrition.protein),
-    carbs: numberToString(product.nutrition.carbs),
-    fat: numberToString(product.nutrition.fat),
-    fiber: numberToString(product.nutrition.fiber),
-    sugar: numberToString(product.nutrition.sugar),
-  };
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 export default function AdminProductFormPage() {
@@ -133,23 +111,14 @@ function ProductForm({ product }: { product?: ProductDto }) {
   const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const [name, setName] = useState(product?.name ?? '');
-  const [slug, setSlug] = useState(product?.slug ?? '');
   const [categoryId, setCategoryId] = useState(() => {
     if (!product) {
       return '';
     }
 
-    return typeof product.category === 'object'
-      ? product.category._id
-      : product.category;
+    return typeof product.category === 'object' ? product.category._id : product.category;
   });
-  const [shortDescription, setShortDescription] = useState(
-    product?.shortDescription ?? '',
-  );
   const [description, setDescription] = useState(product?.description ?? '');
-  const [badge, setBadge] = useState(product?.badge ?? '');
-  const [tags, setTags] = useState((product?.tags ?? []).join(', '));
-  const [ingredients, setIngredients] = useState(product?.ingredients ?? '');
   const [images, setImages] = useState<ImageRow[]>(() =>
     (product?.images ?? []).map((image) => ({
       url: image.url,
@@ -167,32 +136,26 @@ function ProductForm({ product }: { product?: ProductDto }) {
           compareAtPrice: numberToString(variant.compareAtPrice),
           stock: String(variant.stock),
           sku: variant.sku,
+          flashDeal: Boolean(variant.flashPrice),
+          flashPrice: numberToString(variant.flashPrice),
+          flashStartsAt: toDateTimeLocal(variant.flashStartsAt),
+          flashEndsAt: toDateTimeLocal(variant.flashEndsAt),
         }))
       : [{ ...emptyVariant }],
   );
-  const [nutrition, setNutrition] = useState<NutritionRow>(() =>
-    toNutritionRow(product),
-  );
-  const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false);
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
-  const [seoTitle, setSeoTitle] = useState('');
-  const [seoDescription, setSeoDescription] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
 
   const updateVariant = (index: number, patch: Partial<VariantRow>) => {
     setVariants((current) =>
-      current.map((variant, position) =>
-        position === index ? { ...variant, ...patch } : variant,
-      ),
+      current.map((variant, position) => (position === index ? { ...variant, ...patch } : variant)),
     );
   };
 
   const updateImage = (index: number, patch: Partial<ImageRow>) => {
     setImages((current) =>
-      current.map((image, position) =>
-        position === index ? { ...image, ...patch } : image,
-      ),
+      current.map((image, position) => (position === index ? { ...image, ...patch } : image)),
     );
   };
 
@@ -243,6 +206,25 @@ function ProductForm({ product }: { product?: ProductDto }) {
     }
   };
 
+  const showValidationErrors = (nextErrors: Record<string, string>) => {
+    const details = Object.entries(nextErrors).map(([key, message]) => {
+      if (key === 'categoryId') {
+        return 'Category: select a valid category';
+      }
+
+      const variantMatch = key.match(/^variants\.(\d+)\.(.+)$/);
+
+      if (variantMatch) {
+        return `Variant ${Number(variantMatch[1]) + 1} ${variantMatch[2]}: ${message}`;
+      }
+
+      return `${key}: ${message}`;
+    });
+
+    setErrors(nextErrors);
+    setFormError(`Please fix the highlighted fields before saving. ${details.join(' · ')}`);
+  };
+
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError('');
@@ -250,9 +232,7 @@ function ProductForm({ product }: { product?: ProductDto }) {
 
     const payload = {
       name,
-      slug: slug.trim() ? slug.trim() : undefined,
       description,
-      shortDescription,
       categoryId,
       images: images
         .filter((image) => image.url.trim())
@@ -262,21 +242,6 @@ function ProductForm({ product }: { product?: ProductDto }) {
           alt: image.alt || undefined,
         })),
       video: video.trim(),
-      tags: tags
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      ingredients,
-      nutrition: Object.values(nutrition).some((value) => value.trim())
-        ? {
-            calories: toNumber(nutrition.calories),
-            protein: toNumber(nutrition.protein),
-            carbs: toNumber(nutrition.carbs),
-            fat: toNumber(nutrition.fat),
-            fiber: toNumber(nutrition.fiber),
-            sugar: toNumber(nutrition.sugar),
-          }
-        : undefined,
       variants: variants.map((variant) => ({
         label: variant.label,
         grams: toNumber(variant.grams),
@@ -284,15 +249,28 @@ function ProductForm({ product }: { product?: ProductDto }) {
         compareAtPrice: toNumber(variant.compareAtPrice),
         stock: toNumber(variant.stock) ?? 0,
         sku: variant.sku,
+        flashPrice: variant.flashDeal ? toNumber(variant.flashPrice) : undefined,
+        flashStartsAt: variant.flashDeal ? variant.flashStartsAt : undefined,
+        flashEndsAt: variant.flashDeal ? variant.flashEndsAt : undefined,
       })),
-      isFeatured,
       isActive,
-      badge,
-      seo:
-        seoTitle.trim() || seoDescription.trim()
-          ? { title: seoTitle, description: seoDescription }
-          : undefined,
     };
+
+    const missingFlashPrices = variants.reduce<Record<string, string>>(
+      (accumulator, variant, index) => {
+        if (variant.flashDeal && !variant.flashPrice.trim()) {
+          accumulator[`variants.${index}.flashPrice`] = 'Flash sale price is required';
+        }
+
+        return accumulator;
+      },
+      {},
+    );
+
+    if (Object.keys(missingFlashPrices).length > 0) {
+      showValidationErrors(missingFlashPrices);
+      return;
+    }
 
     const parsed = productInputSchema.safeParse(payload);
 
@@ -304,8 +282,7 @@ function ProductForm({ product }: { product?: ProductDto }) {
         nextErrors[key] = issue.message;
       }
 
-      setErrors(nextErrors);
-      setFormError('Please fix the highlighted fields before saving.');
+      showValidationErrors(nextErrors);
       return;
     }
 
@@ -359,25 +336,17 @@ function ProductForm({ product }: { product?: ProductDto }) {
           <section className="rounded-2xl border bg-card p-5">
             <h2 className="text-sm font-semibold">Basics</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field label="Product name" htmlFor="name" error={errors.name} className="sm:col-span-2">
+              <Field
+                label="Product name"
+                htmlFor="name"
+                error={errors.name}
+                className="sm:col-span-2"
+              >
                 <Input
                   id="name"
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Premium Cashews"
-                />
-              </Field>
-              <Field
-                label="Slug"
-                htmlFor="slug"
-                hint="Leave blank to generate from the name"
-                error={errors.slug}
-              >
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(event) => setSlug(event.target.value)}
-                  placeholder="premium-cashews"
+                  placeholder="Portable Room Heater"
                 />
               </Field>
               <Field label="Category" htmlFor="category" error={errors.categoryId}>
@@ -396,19 +365,6 @@ function ProductForm({ product }: { product?: ProductDto }) {
                 </Select>
               </Field>
               <Field
-                label="Short description"
-                htmlFor="shortDescription"
-                error={errors.shortDescription}
-                className="sm:col-span-2"
-              >
-                <Input
-                  id="shortDescription"
-                  value={shortDescription}
-                  onChange={(event) => setShortDescription(event.target.value)}
-                  placeholder="Hand-picked, creamy cashews packed fresh."
-                />
-              </Field>
-              <Field
                 label="Full description"
                 htmlFor="description"
                 error={errors.description}
@@ -420,22 +376,6 @@ function ProductForm({ product }: { product?: ProductDto }) {
                   onChange={(event) => setDescription(event.target.value)}
                   rows={5}
                   placeholder="Tell customers what makes this product special."
-                />
-              </Field>
-              <Field label="Badge" htmlFor="badge" hint="Shown on product cards" error={errors.badge}>
-                <Input
-                  id="badge"
-                  value={badge}
-                  onChange={(event) => setBadge(event.target.value)}
-                  placeholder="Best seller"
-                />
-              </Field>
-              <Field label="Tags" htmlFor="tags" hint="Comma separated" error={errors.tags}>
-                <Input
-                  id="tags"
-                  value={tags}
-                  onChange={(event) => setTags(event.target.value)}
-                  placeholder="cashew, kaju, premium"
                 />
               </Field>
             </div>
@@ -486,33 +426,23 @@ function ProductForm({ product }: { product?: ProductDto }) {
                   </div>
 
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Label" htmlFor={`variant-label-${index}`} error={errors[`variants.${index}.label`]}>
+                    <Field
+                      label="Label"
+                      htmlFor={`variant-label-${index}`}
+                      error={errors[`variants.${index}.label`]}
+                    >
                       <Input
                         id={`variant-label-${index}`}
                         value={variant.label}
                         onChange={(event) => updateVariant(index, { label: event.target.value })}
-                        placeholder="250g"
+                        placeholder="Standard"
                       />
                     </Field>
-                    <Field label="Grams" htmlFor={`variant-grams-${index}`} error={errors[`variants.${index}.grams`]}>
-                      <Input
-                        id={`variant-grams-${index}`}
-                        type="number"
-                        min="0"
-                        value={variant.grams}
-                        onChange={(event) => updateVariant(index, { grams: event.target.value })}
-                        placeholder="250"
-                      />
-                    </Field>
-                    <Field label="SKU" htmlFor={`variant-sku-${index}`} hint="Auto-generated if blank" error={errors[`variants.${index}.sku`]}>
-                      <Input
-                        id={`variant-sku-${index}`}
-                        value={variant.sku}
-                        onChange={(event) => updateVariant(index, { sku: event.target.value })}
-                        placeholder="CASHEW-250G"
-                      />
-                    </Field>
-                    <Field label="Price (৳)" htmlFor={`variant-price-${index}`} error={errors[`variants.${index}.price`]}>
+                    <Field
+                      label="Price (৳)"
+                      htmlFor={`variant-price-${index}`}
+                      error={errors[`variants.${index}.price`]}
+                    >
                       <Input
                         id={`variant-price-${index}`}
                         type="number"
@@ -522,19 +452,11 @@ function ProductForm({ product }: { product?: ProductDto }) {
                         placeholder="450"
                       />
                     </Field>
-                    <Field label="Compare at (৳)" htmlFor={`variant-compare-${index}`} error={errors[`variants.${index}.compareAtPrice`]}>
-                      <Input
-                        id={`variant-compare-${index}`}
-                        type="number"
-                        min="0"
-                        value={variant.compareAtPrice}
-                        onChange={(event) =>
-                          updateVariant(index, { compareAtPrice: event.target.value })
-                        }
-                        placeholder="520"
-                      />
-                    </Field>
-                    <Field label="Stock" htmlFor={`variant-stock-${index}`} error={errors[`variants.${index}.stock`]}>
+                    <Field
+                      label="Stock"
+                      htmlFor={`variant-stock-${index}`}
+                      error={errors[`variants.${index}.stock`]}
+                    >
                       <Input
                         id={`variant-stock-${index}`}
                         type="number"
@@ -545,68 +467,69 @@ function ProductForm({ product }: { product?: ProductDto }) {
                       />
                     </Field>
                   </div>
+
+                  <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2 text-sm">
+                    <span>
+                      <span className="font-medium">Flash deal</span>
+                      <span className="block text-xs text-muted-foreground">
+                        Add this variant to Flash deals. Uncheck to remove it.
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={variant.flashDeal}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        updateVariant(index, {
+                          flashDeal: checked,
+                          flashPrice: checked ? variant.flashPrice : '',
+                          flashStartsAt: checked ? variant.flashStartsAt : '',
+                          flashEndsAt: checked ? variant.flashEndsAt : '',
+                        });
+                      }}
+                      className="h-4 w-4 accent-[var(--primary)]"
+                    />
+                  </label>
+
+                  {variant.flashDeal && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <Field
+                        label="Flash sale price (৳)"
+                        htmlFor={`variant-flash-price-${index}`}
+                        error={errors[`variants.${index}.flashPrice`]}
+                      >
+                        <Input
+                          id={`variant-flash-price-${index}`}
+                          type="number"
+                          min="1"
+                          value={variant.flashPrice}
+                          onChange={(event) =>
+                            updateVariant(index, { flashPrice: event.target.value })
+                          }
+                          placeholder="390"
+                        />
+                      </Field>
+                      <Field
+                        label="Ends at (optional)"
+                        htmlFor={`variant-flash-end-${index}`}
+                        error={errors[`variants.${index}.flashEndsAt`]}
+                      >
+                        <Input
+                          id={`variant-flash-end-${index}`}
+                          type="datetime-local"
+                          value={variant.flashEndsAt}
+                          onChange={(event) =>
+                            updateVariant(index, { flashEndsAt: event.target.value })
+                          }
+                        />
+                      </Field>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-2xl border bg-card p-5">
-            <h2 className="text-sm font-semibold">Extra details</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Field
-                label="Ingredients"
-                htmlFor="ingredients"
-                error={errors.ingredients}
-                className="sm:col-span-2"
-              >
-                <Textarea
-                  id="ingredients"
-                  value={ingredients}
-                  onChange={(event) => setIngredients(event.target.value)}
-                  rows={2}
-                  placeholder="Cashews, sea salt."
-                />
-              </Field>
-              {(
-                [
-                  ['calories', 'Calories'],
-                  ['protein', 'Protein (g)'],
-                  ['carbs', 'Carbs (g)'],
-                  ['fat', 'Fat (g)'],
-                  ['fiber', 'Fibre (g)'],
-                  ['sugar', 'Sugar (g)'],
-                ] as Array<[keyof NutritionRow, string]>
-              ).map(([key, label]) => (
-                <Field key={key} label={label} htmlFor={`nutrition-${key}`} error={errors[`nutrition.${key}`]}>
-                  <Input
-                    id={`nutrition-${key}`}
-                    type="number"
-                    min="0"
-                    value={nutrition[key]}
-                    onChange={(event) =>
-                      setNutrition((current) => ({ ...current, [key]: event.target.value }))
-                    }
-                  />
-                </Field>
-              ))}
-              <Field label="SEO title" htmlFor="seoTitle" error={errors['seo.title']}>
-                <Input
-                  id="seoTitle"
-                  value={seoTitle}
-                  onChange={(event) => setSeoTitle(event.target.value)}
-                  placeholder="Premium Cashews in Bangladesh"
-                />
-              </Field>
-              <Field label="SEO description" htmlFor="seoDescription" error={errors['seo.description']}>
-                <Input
-                  id="seoDescription"
-                  value={seoDescription}
-                  onChange={(event) => setSeoDescription(event.target.value)}
-                  placeholder="Fresh, hand-picked cashews delivered nationwide."
-                />
-              </Field>
-            </div>
-          </section>
         </div>
 
         <div className="space-y-5">
@@ -666,13 +589,6 @@ function ProductForm({ product }: { product?: ProductDto }) {
                         className="h-9 text-xs"
                         aria-label={`Image ${index + 1} URL`}
                       />
-                      <Input
-                        value={image.alt}
-                        onChange={(event) => updateImage(index, { alt: event.target.value })}
-                        placeholder="Alt text"
-                        className="h-9 text-xs"
-                        aria-label={`Image ${index + 1} alt text`}
-                      />
                     </div>
                     <Button
                       type="button"
@@ -680,9 +596,7 @@ function ProductForm({ product }: { product?: ProductDto }) {
                       size="icon"
                       className="h-8 w-8 shrink-0 text-destructive"
                       onClick={() =>
-                        setImages((current) =>
-                          current.filter((_, position) => position !== index),
-                        )
+                        setImages((current) => current.filter((_, position) => position !== index))
                       }
                       aria-label={`Remove image ${index + 1}`}
                     >
@@ -747,11 +661,19 @@ function ProductForm({ product }: { product?: ProductDto }) {
               Optional. Videos are uploaded to Cloudinary (max 50 MB).
             </p>
             {video && (
-              <video
-                src={video}
-                controls
-                className="mt-3 w-full rounded-xl border bg-black"
-              />
+              <div className="relative mt-3">
+                <video src={video} controls className="w-full rounded-xl border bg-black" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-2 h-8 w-8 bg-background/90 text-destructive hover:bg-background"
+                  onClick={() => setVideo('')}
+                  aria-label="Remove product video"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             )}
           </section>
 
@@ -769,20 +691,6 @@ function ProductForm({ product }: { product?: ProductDto }) {
                   type="checkbox"
                   checked={isActive}
                   onChange={(event) => setIsActive(event.target.checked)}
-                  className="h-4 w-4 accent-[var(--primary)]"
-                />
-              </label>
-              <label className="flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-2.5 text-sm">
-                <span>
-                  <span className="font-medium">Featured</span>
-                  <span className="block text-xs text-muted-foreground">
-                    Highlight on the home page
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={isFeatured}
-                  onChange={(event) => setIsFeatured(event.target.checked)}
                   className="h-4 w-4 accent-[var(--primary)]"
                 />
               </label>

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { requireMongoUri } from '../apps/api/dist/config/env.js';
 import { createApp } from '../apps/api/dist/app.js';
 
 const app = createApp();
@@ -10,10 +11,10 @@ interface MongooseCache {
 }
 
 const globalWithMongoose = globalThis as typeof globalThis & {
-  __yaqeenMongoose?: MongooseCache;
+  __anandoDealMongoose?: MongooseCache;
 };
 
-const cached = (globalWithMongoose.__yaqeenMongoose ??= {
+const cached = (globalWithMongoose.__anandoDealMongoose ??= {
   connection: null,
   promise: null,
 });
@@ -23,11 +24,7 @@ async function connectDatabase(): Promise<typeof mongoose> {
     return cached.connection;
   }
 
-  const uri = process.env.MONGODB_URI;
-
-  if (!uri) {
-    throw new Error('MONGODB_URI is not configured');
-  }
+  const uri = requireMongoUri(process.env);
 
   cached.promise ??= mongoose.connect(uri, {
     serverSelectionTimeoutMS: 10_000,

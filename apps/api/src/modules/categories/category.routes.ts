@@ -1,4 +1,4 @@
-import { categoryInputSchema, categoryUpdateSchema } from '@yaqeen/shared';
+import { categoryInputSchema, categoryUpdateSchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler.js';
 import {

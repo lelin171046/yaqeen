@@ -1,4 +1,9 @@
-import { HERO_SLIDE_THEME_VALUES } from '@yaqeen/shared';
+import {
+  DELIVERY_BENEFIT_ICON_VALUES,
+  HERO_SLIDE_THEME_VALUES,
+  SUPPORT_EMAIL,
+  SUPPORT_PHONE,
+} from '@anando-deal/shared';
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
 
 const deliveryZoneSchema = new Schema(
@@ -15,6 +20,17 @@ const socialLinksSchema = new Schema(
     facebook: { type: String, trim: true, default: '' },
     instagram: { type: String, trim: true, default: '' },
     whatsapp: { type: String, trim: true, default: '' },
+  },
+  { _id: false },
+);
+
+const deliveryBenefitSchema = new Schema(
+  {
+    id: { type: String, required: true, trim: true, maxlength: 80 },
+    title: { type: String, required: true, trim: true, maxlength: 80 },
+    description: { type: String, trim: true, maxlength: 180, default: '' },
+    icon: { type: String, enum: [...DELIVERY_BENEFIT_ICON_VALUES], default: 'truck' },
+    isActive: { type: Boolean, default: true },
   },
   { _id: false },
 );
@@ -36,6 +52,8 @@ const heroSlideSchema = new Schema(
       default: 'forest',
     },
     isActive: { type: Boolean, default: true },
+    startsAt: { type: Date, default: undefined },
+    endsAt: { type: Date, default: undefined },
   },
   { _id: false },
 );
@@ -61,22 +79,34 @@ const settingsSchema = new Schema(
       type: String,
       trim: true,
       maxlength: 120,
-      default: 'Yaqeen',
+      default: 'Anando Deal',
     },
     supportPhone: {
       type: String,
       trim: true,
       maxlength: 20,
-      default: '',
+      default: SUPPORT_PHONE,
     },
     supportEmail: {
       type: String,
       trim: true,
       lowercase: true,
       maxlength: 160,
-      default: '',
+      default: SUPPORT_EMAIL,
     },
     bkashMerchantNumber: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: '',
+    },
+    nagadMerchantNumber: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: '',
+    },
+    rocketMerchantNumber: {
       type: String,
       trim: true,
       maxlength: 20,
@@ -111,6 +141,18 @@ const settingsSchema = new Schema(
     heroCarousel: {
       type: heroCarouselSchema,
       default: undefined,
+    },
+    flashDealsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    featuredCategoryIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
+      default: [],
+    },
+    deliveryBenefits: {
+      type: [deliveryBenefitSchema],
+      default: [],
     },
   },
   {

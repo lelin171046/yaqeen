@@ -1,4 +1,4 @@
-import { STORE_WHATSAPP } from '@yaqeen/shared';
+import { STORE_WHATSAPP } from '@anando-deal/shared';
 
 export function getWhatsAppHref(message?: string): string {
   const number = import.meta.env.VITE_STORE_WHATSAPP || STORE_WHATSAPP;

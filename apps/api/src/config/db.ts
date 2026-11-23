@@ -1,16 +1,12 @@
 import mongoose from 'mongoose';
-import { env } from './env.js';
+import { env, requireMongoUri, resolveMongoUri } from './env.js';
 import { logger } from './logger.js';
 
 export type DatabaseState =
-  | 'connected'
-  | 'connecting'
-  | 'disconnected'
-  | 'disconnecting'
-  | 'unconfigured';
+  'connected' | 'connecting' | 'disconnected' | 'disconnecting' | 'unconfigured';
 
 export function isDatabaseConfigured(): boolean {
-  return Boolean(env.MONGODB_URI);
+  return Boolean(resolveMongoUri(env));
 }
 
 export function databaseState(): DatabaseState {
@@ -31,10 +27,17 @@ export function databaseState(): DatabaseState {
 }
 
 export async function connectDatabase(): Promise<void> {
-  if (!env.MONGODB_URI) {
-    logger.warn('MONGODB_URI not set. API is running without a database connection.');
+  if (!resolveMongoUri(env)) {
+    logger.warn('No MongoDB URI set. API is running without a database connection.');
     return;
   }
+
+  const uri = requireMongoUri(env);
+
+  logger.info(
+    { mode: env.NODE_ENV === 'production' ? 'production' : 'local' },
+    'MongoDB connection mode selected',
+  );
 
   mongoose.connection.on('connected', () => {
     logger.info({ host: mongoose.connection.host }, 'MongoDB connected');
@@ -48,7 +51,7 @@ export async function connectDatabase(): Promise<void> {
     logger.error({ err: error }, 'MongoDB connection error');
   });
 
-  await mongoose.connect(env.MONGODB_URI, {
+  await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 10_000,
   });
 }

@@ -1,4 +1,4 @@
-import { dashboardQuerySchema } from '@yaqeen/shared';
+import { dashboardQuerySchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler.js';
 import { getDashboardSummary } from './dashboard.service.js';

@@ -1,4 +1,4 @@
-import { loginSchema } from '@yaqeen/shared';
+import { loginSchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { loginRateLimiter } from '../../middleware/rate-limit.js';
 import { requireAuth } from '../../middleware/require-auth.js';
@@ -51,8 +51,7 @@ authRouter.post(
   '/logout',
   asyncHandler(async (req, res) => {
     const token = (req.cookies?.[REFRESH_COOKIE] ?? req.cookies?.[ACCESS_COOKIE]) as
-      | string
-      | undefined;
+      string | undefined;
 
     if (token) {
       await revokeAdminSession(token);

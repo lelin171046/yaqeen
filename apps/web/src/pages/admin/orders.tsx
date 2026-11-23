@@ -6,7 +6,7 @@ import {
   formatBdt,
   type OrderStatus,
   type PaymentMethod,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -222,9 +222,7 @@ export default function AdminOrdersPage() {
                       <td className="px-5 py-3">
                         <StatusBadge value={order.status} />
                       </td>
-                      <td className="px-5 py-3 text-right font-medium">
-                        {formatBdt(order.total)}
-                      </td>
+                      <td className="px-5 py-3 text-right font-medium">{formatBdt(order.total)}</td>
                       <td className="px-5 py-3 text-right text-xs text-muted-foreground">
                         {formatDateTime(order.createdAt)}
                       </td>

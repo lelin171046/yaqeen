@@ -1,3 +1,4 @@
+import { STORE_WHATSAPP, SUPPORT_EMAIL, SUPPORT_PHONE } from '@anando-deal/shared';
 import type { Types } from 'mongoose';
 import { connectDatabase, disconnectDatabase } from '../config/db.js';
 import { env } from '../config/env.js';
@@ -10,144 +11,155 @@ import { hashPassword } from '../utils/password.js';
 import { slugify } from '../utils/slug.js';
 
 const placeholder = (text: string) =>
-  `https://placehold.co/800x800/f3ede0/1f4d3b?text=${encodeURIComponent(text)}`;
+  `https://placehold.co/800x800/1463c9/f2be5c?text=${encodeURIComponent(text)}`;
+
+type SeedVariant = {
+  label: string;
+  skuPart: string;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+};
+
+type SeedProduct = {
+  name: string;
+  categorySlug: string;
+  shortDescription: string;
+  description: string;
+  tags: string[];
+  badge: string;
+  isFeatured: boolean;
+  variants: SeedVariant[];
+};
 
 const categories = [
   {
-    name: 'Nuts & Seeds',
-    slug: 'nuts-seeds',
-    description: 'Cashews, almonds, pistachios, walnuts and everyday seeds.',
+    name: 'Winter Essentials',
+    slug: 'winter-essentials',
+    description: 'Hot water bottles, room heaters, blankets and winter must-haves.',
     sortOrder: 1,
     isActive: true,
   },
   {
-    name: 'Dry Fruits',
-    slug: 'dry-fruits',
-    description: 'Dates, raisins, figs and naturally sweet dry fruits.',
+    name: 'Winter Fashion',
+    slug: 'winter-fashion',
+    description: 'Winter dresses, jackets, sweaters, shawls and layered clothing.',
     sortOrder: 2,
     isActive: true,
   },
   {
-    name: 'Diet Foods',
-    slug: 'diet-foods',
-    description: 'Clean, filling foods for mindful eating and weight goals.',
+    name: 'Kids & Toys',
+    slug: 'kids-toys',
+    description: 'Toys, games, learning sets and kids clothing.',
     sortOrder: 3,
     isActive: true,
   },
   {
-    name: 'Nutritional Foods',
-    slug: 'nutritional-foods',
-    description: 'Protein, fibre and energy support for active days.',
+    name: 'Home & Decorative',
+    slug: 'home-decorative',
+    description: 'Decorative items, wall art, lights, vases and cushions.',
     sortOrder: 4,
     isActive: true,
   },
   {
-    name: 'Gift Boxes',
-    slug: 'gift-boxes',
-    description: 'Premium assortments packed for gifting.',
+    name: 'General Products',
+    slug: 'general-products',
+    description: 'Everyday products for home, travel, work and more.',
     sortOrder: 5,
-    isActive: true,
-  },
-  {
-    name: 'Combo Packs',
-    slug: 'combo-packs',
-    description: 'Value bundles for families and regular customers.',
-    sortOrder: 6,
     isActive: true,
   },
 ];
 
-const products = [
+const products: SeedProduct[] = [
   {
-    name: 'Premium Cashews',
-    categorySlug: 'nuts-seeds',
-    shortDescription: 'Hand-picked, creamy cashews packed fresh.',
+    name: 'Reusable Hot Water Bottle',
+    categorySlug: 'winter-essentials',
+    shortDescription: 'Warm, reusable comfort for cold nights.',
     description:
-      'Our premium cashews are carefully selected for size, crunch and natural sweetness. Roasted lightly and packed in small batches so every handful tastes fresh.',
-    tags: ['cashew', 'kaju', 'premium'],
-    badge: 'Best seller',
+      'A durable hot water bottle for cozy winter evenings. Easy to fill, reuse, and keep close on cold nights at home.',
+    tags: ['hot water bottle', 'winter', 'warmth'],
+    badge: 'Winter pick',
     isFeatured: true,
     variants: [
-      { label: '250g', grams: 250, price: 450, compareAtPrice: 520, stock: 30 },
-      { label: '500g', grams: 500, price: 850, compareAtPrice: 950, stock: 20 },
-      { label: '1kg', grams: 1000, price: 1600, compareAtPrice: 1800, stock: 10 },
+      { label: '1 L', skuPart: '1l', price: 450, compareAtPrice: 520, stock: 30 },
+      { label: '2 L', skuPart: '2l', price: 650, stock: 20 },
     ],
   },
   {
-    name: 'California Almonds',
-    categorySlug: 'nuts-seeds',
-    shortDescription: 'Crunchy almonds for snacking and breakfast bowls.',
+    name: 'Portable Room Heater',
+    categorySlug: 'winter-essentials',
+    shortDescription: 'Compact warmth for bedrooms and small spaces.',
     description:
-      'Naturally nutritious California almonds with a clean crunch. A simple everyday source of protein, fibre and healthy fats.',
-    tags: ['almond', 'badam', 'healthy'],
-    badge: 'Daily favourite',
+      'A portable room heater designed for quick, convenient warmth in bedrooms, offices, and small living spaces during winter.',
+    tags: ['room heater', 'winter', 'home'],
+    badge: 'Seasonal deal',
     isFeatured: true,
     variants: [
-      { label: '250g', grams: 250, price: 380, stock: 35 },
-      { label: '500g', grams: 500, price: 720, stock: 25 },
-      { label: '1kg', grams: 1000, price: 1350, stock: 12 },
+      { label: 'Standard', skuPart: 'std', price: 2800, stock: 12 },
+      { label: 'Premium', skuPart: 'prm', price: 3900, compareAtPrice: 4500, stock: 8 },
     ],
   },
   {
-    name: 'Salted Pistachios',
-    categorySlug: 'nuts-seeds',
-    shortDescription: 'Roasted pistachios with a light touch of salt.',
+    name: 'Winter Dress for Women',
+    categorySlug: 'winter-fashion',
+    shortDescription: 'A warm, stylish dress for winter days.',
     description:
-      'Premium pistachios, roasted and lightly salted for a satisfying snack. Great for sharing, gifting or keeping at your desk.',
-    tags: ['pistachio', 'pista', 'salted'],
-    badge: 'New',
+      'A comfortable winter dress made for layering and everyday wear. Simple styling with a warm feel for the cold season.',
+    tags: ['winter dress', 'fashion', 'clothing'],
+    badge: 'New season',
     isFeatured: true,
     variants: [
-      { label: '250g', grams: 250, price: 620, stock: 18 },
-      { label: '500g', grams: 500, price: 1180, stock: 10 },
+      { label: 'M', skuPart: 'm', price: 1250, stock: 20 },
+      { label: 'L', skuPart: 'l', price: 1250, stock: 18 },
+      { label: 'XL', skuPart: 'xl', price: 1350, stock: 10 },
     ],
   },
   {
-    name: 'Medjool Dates',
-    categorySlug: 'dry-fruits',
-    shortDescription: 'Soft, caramel-like dates with natural sweetness.',
+    name: 'Kids Building Blocks Set',
+    categorySlug: 'kids-toys',
+    shortDescription: 'Creative building fun for kids.',
     description:
-      'Large Medjool dates with a rich, soft texture. A naturally sweet snack that works beautifully in breakfasts, desserts and gift boxes.',
-    tags: ['dates', 'khejur', 'natural'],
-    badge: 'Natural energy',
+      'A colorful building blocks set that encourages creative play and simple construction projects for kids.',
+    tags: ['kids toys', 'building blocks', 'learning'],
+    badge: 'Kids favourite',
     isFeatured: true,
     variants: [
-      { label: '500g', grams: 500, price: 650, stock: 22 },
-      { label: '1kg', grams: 1000, price: 1200, stock: 15 },
+      { label: '50 pieces', skuPart: '50pcs', price: 850, stock: 25 },
+      { label: '100 pieces', skuPart: '100pcs', price: 1400, stock: 15 },
     ],
   },
   {
-    name: 'Chia Seeds',
-    categorySlug: 'nutritional-foods',
-    shortDescription: 'Fibre-rich chia seeds for smoothies and oats.',
+    name: 'Decorative LED String Lights',
+    categorySlug: 'home-decorative',
+    shortDescription: 'Soft lighting for rooms and special corners.',
     description:
-      'Clean chia seeds that absorb liquid and add satisfying texture to smoothies, puddings and breakfast bowls. A simple fibre boost.',
-    tags: ['chia', 'seeds', 'fibre'],
-    badge: 'Diet friendly',
+      'Decorative LED string lights for bedrooms, shelves, windows, and small celebrations. A simple way to brighten any space.',
+    tags: ['decorative items', 'lights', 'home decor'],
+    badge: 'Home pick',
+    isFeatured: true,
+    variants: [
+      { label: '5 m', skuPart: '5m', price: 550, stock: 30 },
+      { label: '10 m', skuPart: '10m', price: 850, stock: 20 },
+    ],
+  },
+  {
+    name: 'Everyday Travel Backpack',
+    categorySlug: 'general-products',
+    shortDescription: 'A practical backpack for daily use.',
+    description:
+      'A simple, practical backpack for work, study, and short trips. Spacious enough for daily essentials without feeling bulky.',
+    tags: ['backpack', 'travel', 'everyday'],
+    badge: 'Everyday value',
     isFeatured: false,
     variants: [
-      { label: '250g', grams: 250, price: 320, stock: 40 },
-      { label: '500g', grams: 500, price: 580, stock: 25 },
-    ],
-  },
-  {
-    name: 'Protein Snack Mix',
-    categorySlug: 'nutritional-foods',
-    shortDescription: 'A balanced mix of nuts, seeds and dried fruit.',
-    description:
-      'A balanced trail mix built for busy days. Nuts, seeds and dried fruit in one convenient pouch, with no unnecessary fillers.',
-    tags: ['protein', 'trail mix', 'gym'],
-    badge: 'Gym pick',
-    isFeatured: false,
-    variants: [
-      { label: '200g', grams: 200, price: 420, stock: 30 },
-      { label: '500g', grams: 500, price: 950, stock: 18 },
+      { label: '20 L', skuPart: '20l', price: 1200, stock: 22 },
+      { label: '30 L', skuPart: '30l', price: 1600, stock: 14 },
     ],
   },
 ];
 
 async function seedAdmin(): Promise<string> {
-  const email = env.ADMIN_EMAIL ?? 'admin@yaqeen.local';
+  const email = env.ADMIN_EMAIL ?? 'admin@anandodeal.local';
   const password = env.ADMIN_PASSWORD ?? 'ChangeMe123!';
 
   if (env.NODE_ENV === 'production' && (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD)) {
@@ -209,7 +221,7 @@ async function main(): Promise<void> {
     const slug = slugify(product.name);
     const variants = product.variants.map((variant, index) => ({
       ...variant,
-      sku: `${slug}-${variant.grams}g-${index + 1}`.toUpperCase(),
+      sku: `${slug}-${variant.skuPart}-${index + 1}`.toUpperCase(),
     }));
 
     await ProductModel.findOneAndUpdate(
@@ -250,10 +262,12 @@ async function main(): Promise<void> {
     {
       $setOnInsert: {
         key: 'store',
-        storeName: 'Yaqeen',
-        supportPhone: '+8801799573916',
-        supportEmail: '',
+        storeName: 'Anando Deal',
+        supportPhone: SUPPORT_PHONE,
+        supportEmail: SUPPORT_EMAIL,
         bkashMerchantNumber: env.BKASH_MERCHANT_NUMBER ?? '',
+        nagadMerchantNumber: env.NAGAD_MERCHANT_NUMBER ?? '',
+        rocketMerchantNumber: env.ROCKET_MERCHANT_NUMBER ?? '',
         freeDeliveryThreshold: env.FREE_DELIVERY_THRESHOLD,
         defaultDeliveryCharge: env.DEFAULT_DELIVERY_CHARGE,
         deliveryZones: [
@@ -265,7 +279,7 @@ async function main(): Promise<void> {
         socialLinks: {
           facebook: '',
           instagram: '',
-          whatsapp: 'https://wa.me/8801799573916',
+          whatsapp: `https://wa.me/${STORE_WHATSAPP.replace(/\D/g, '')}`,
         },
       },
     },
@@ -278,18 +292,20 @@ async function main(): Promise<void> {
 
   await SettingsModel.updateOne(
     { key: 'store', supportPhone: '' },
-    { $set: { supportPhone: '+8801799573916' } },
+    { $set: { supportPhone: SUPPORT_PHONE } },
+  );
+
+  await SettingsModel.updateOne(
+    { key: 'store', supportEmail: '' },
+    { $set: { supportEmail: SUPPORT_EMAIL } },
   );
 
   await SettingsModel.updateOne(
     {
       key: 'store',
-      $or: [
-        { 'socialLinks.whatsapp': '' },
-        { 'socialLinks.whatsapp': { $exists: false } },
-      ],
+      $or: [{ 'socialLinks.whatsapp': '' }, { 'socialLinks.whatsapp': { $exists: false } }],
     },
-    { $set: { 'socialLinks.whatsapp': 'https://wa.me/8801799573916' } },
+    { $set: { 'socialLinks.whatsapp': `https://wa.me/${STORE_WHATSAPP.replace(/\D/g, '')}` } },
   );
 
   logger.info(

@@ -1,4 +1,8 @@
-import type { CreateOrderInput } from '@yaqeen/shared';
+import {
+  isManualPaymentMethod,
+  resolveVariantPricing,
+  type CreateOrderInput,
+} from '@anando-deal/shared';
 import { Types } from 'mongoose';
 import { logger } from '../../config/logger.js';
 import { nextSequence } from '../../models/counter.js';
@@ -27,6 +31,7 @@ export interface PublicOrder {
   courierTrackingId: string;
   paymentStatus: string;
   paymentMethod: string;
+  paymentTrxId: string;
   bkashTrxId: string;
   subtotal: number;
   deliveryCharge: number;
@@ -87,7 +92,7 @@ export async function generateOrderNumber(): Promise<string> {
   const dateKey = dhakaDateKey();
   const sequence = await nextSequence(`order-${dateKey}`);
 
-  return `YQ-${dateKey}-${String(sequence).padStart(4, '0')}`;
+  return `AD-${dateKey}-${String(sequence).padStart(4, '0')}`;
 }
 
 export function toPublicOrder(order: OrderDocument): PublicOrder {
@@ -98,6 +103,7 @@ export function toPublicOrder(order: OrderDocument): PublicOrder {
     courierTrackingId: order.courierTrackingId ?? '',
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod,
+    paymentTrxId: order.paymentTrxId || order.bkashTrxId || '',
     bkashTrxId: order.bkashTrxId,
     subtotal: order.subtotal,
     deliveryCharge: order.deliveryCharge,
@@ -133,15 +139,18 @@ export function toPublicOrder(order: OrderDocument): PublicOrder {
   };
 }
 
-async function buildOrderLines(input: CreateOrderInput): Promise<OrderLine[]> {
+async function buildOrderLines(
+  input: CreateOrderInput,
+): Promise<{ lines: OrderLine[]; discount: number }> {
   const productIds = [...new Set(input.items.map((item) => item.productId))];
   const products = await ProductModel.find({
     _id: { $in: productIds },
     isActive: true,
   }).lean();
   const productsById = new Map(products.map((product) => [String(product._id), product]));
+  let discount = 0;
 
-  return input.items.map((item) => {
+  const lines = input.items.map((item) => {
     const product = productsById.get(item.productId);
 
     if (!product) {
@@ -164,17 +173,23 @@ async function buildOrderLines(input: CreateOrderInput): Promise<OrderLine[]> {
       );
     }
 
+    const pricing = resolveVariantPricing(variant);
+    const unitPrice = pricing.sellingPrice;
+    discount += pricing.savings * item.quantity;
+
     return {
       productId: product._id,
       name: product.name,
       variantSku: variant.sku,
       variantLabel: variant.label,
-      unitPrice: variant.price,
+      unitPrice,
       quantity: item.quantity,
-      lineTotal: variant.price * item.quantity,
+      lineTotal: unitPrice * item.quantity,
       image: product.images[0]?.url ?? '',
     };
   });
+
+  return { lines, discount };
 }
 
 async function restoreStocks(lines: OrderLine[]): Promise<void> {
@@ -245,10 +260,7 @@ async function recordLinkOrder(
     return;
   }
 
-  await OrderLinkModel.updateOne(
-    { _id: link._id },
-    { $inc: { orders: 1, revenue: total } },
-  );
+  await OrderLinkModel.updateOne({ _id: link._id }, { $inc: { orders: 1, revenue: total } });
 }
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -269,10 +281,10 @@ export async function createOrder(input: CreateOrderInput): Promise<PublicOrder>
     }
   }
 
-  const lines = await buildOrderLines(input);
+  const { lines, discount } = await buildOrderLines(input);
   const subtotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
   const deliveryCharge = await getDeliveryCharge(input.customer.district, subtotal);
-  const total = subtotal + deliveryCharge;
+  const total = Math.max(0, subtotal + deliveryCharge - discount);
   const applied = await decrementStocks(lines);
 
   try {
@@ -286,17 +298,22 @@ export async function createOrder(input: CreateOrderInput): Promise<PublicOrder>
       notes: input.customer.notes ?? '',
     };
 
+    const paymentTrxId = isManualPaymentMethod(input.paymentMethod)
+      ? input.paymentTrxId || input.bkashTrxId || ''
+      : '';
+
     const order = await OrderModel.create({
       orderNumber,
       items: lines,
       customer,
       subtotal,
       deliveryCharge,
-      discount: 0,
+      discount,
       total,
       paymentMethod: input.paymentMethod,
       paymentStatus: 'UNPAID',
-      bkashTrxId: input.paymentMethod === 'BKASH_MANUAL' ? input.bkashTrxId ?? '' : '',
+      paymentTrxId,
+      bkashTrxId: input.paymentMethod === 'BKASH_MANUAL' ? paymentTrxId : '',
       status: 'PENDING',
       statusHistory: [
         {

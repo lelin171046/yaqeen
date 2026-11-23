@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ProductInput, ProductUpdateInput } from '@yaqeen/shared';
+import type { ProductInput, ProductUpdateInput } from '@anando-deal/shared';
 import { api } from '@/lib/api';
 import type { ProductDto, ProductListResponse } from '@/lib/types';
 
@@ -65,10 +65,7 @@ export function useUpdateProduct() {
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: ProductUpdateInput }) => {
-      const response = await api.patch<{ product: ProductDto }>(
-        `/admin/products/${id}`,
-        input,
-      );
+      const response = await api.patch<{ product: ProductDto }>(`/admin/products/${id}`, input);
       return response.data.product;
     },
     onSuccess: invalidate,

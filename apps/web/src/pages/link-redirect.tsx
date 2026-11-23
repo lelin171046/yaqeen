@@ -36,7 +36,7 @@ export default function LinkRedirectPage() {
           return;
         }
 
-        sessionStorage.setItem('yaqeen:link', link.code);
+        sessionStorage.setItem('anando-deal:link', link.code);
 
         if (link.product.slug) {
           navigate(`/product/${link.product.slug}?link=${link.code}`, { replace: true });
@@ -62,9 +62,7 @@ export default function LinkRedirectPage() {
       <div className="text-center">
         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
         <h1 className="mt-4 text-xl font-semibold">Opening your offer…</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Taking you to the product page.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Taking you to the product page.</p>
         <Button asChild variant="outline" className="mt-6">
           <Link to="/shop">Go to shop</Link>
         </Button>

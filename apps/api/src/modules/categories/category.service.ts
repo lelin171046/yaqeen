@@ -1,4 +1,4 @@
-import type { CategoryInput, CategoryUpdateInput } from '@yaqeen/shared';
+import type { CategoryInput, CategoryUpdateInput } from '@anando-deal/shared';
 import { CategoryModel } from '../../models/category.js';
 import { ProductModel } from '../../models/product.js';
 import { AppError } from '../../utils/app-error.js';

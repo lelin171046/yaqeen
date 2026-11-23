@@ -1,9 +1,10 @@
-import { BRAND_LOGO_URL } from '@yaqeen/shared';
+import { BRAND_LOGO_URL } from '@anando-deal/shared';
 import {
   ExternalLink,
   LayoutDashboard,
   Link2,
   LogOut,
+  Mail,
   Menu,
   Package,
   Settings,
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/admin/products', label: 'Products', icon: Package },
   { to: '/admin/categories', label: 'Categories', icon: Tags },
   { to: '/admin/links', label: 'Ad links', icon: Link2 },
+  { to: '/admin/support', label: 'Support', icon: Mail },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -84,9 +86,15 @@ export function AdminLayout() {
     <div className="min-h-screen bg-background lg:flex">
       <aside className="hidden w-64 shrink-0 flex-col bg-primary lg:flex">
         <div className="flex h-20 items-center gap-3 px-5">
-          <img src={BRAND_LOGO_URL} alt="Yaqeen" className="h-10 w-10 rounded-full bg-white/5" />
+          <img
+            src="https://res.cloudinary.com/dcdmktxtz/image/upload/v1795029495/762944462_122125767986775176_6251977437859688810_n_tofy6h.jpg"
+            alt="Anando Deal"
+            className="h-10 w-10 rounded-full bg-white/5"
+          />
           <div>
-            <p className="font-display text-lg font-semibold text-primary-foreground">Yaqeen</p>
+            <p className="font-display text-lg font-semibold text-primary-foreground">
+              Anando Deal
+            </p>
             <p className="text-[11px] uppercase tracking-widest text-primary-foreground/60">
               Admin
             </p>
@@ -108,12 +116,12 @@ export function AdminLayout() {
               <div className="flex items-center gap-3">
                 <img
                   src={BRAND_LOGO_URL}
-                  alt="Yaqeen"
+                  alt="Anando Deal"
                   className="h-10 w-10 rounded-full bg-white/5"
                 />
                 <div>
                   <p className="font-display text-lg font-semibold text-primary-foreground">
-                    Yaqeen
+                    Anando Deal
                   </p>
                   <p className="text-[11px] uppercase tracking-widest text-primary-foreground/60">
                     Admin

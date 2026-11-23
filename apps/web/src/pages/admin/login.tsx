@@ -1,4 +1,4 @@
-import { BRAND_LOGO_URL, loginSchema } from '@yaqeen/shared';
+import { BRAND_LOGO_URL, loginSchema } from '@anando-deal/shared';
 import { ArrowRight, Loader2, LockKeyhole, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -66,11 +66,11 @@ export default function AdminLoginPage() {
         <div className="flex items-center gap-3">
           <img
             src={BRAND_LOGO_URL}
-            alt="Yaqeen"
+            alt="Anando Deal"
             className="h-12 w-12 rounded-full bg-white/10"
           />
           <div>
-            <p className="font-display text-2xl font-semibold">Yaqeen</p>
+            <p className="font-display text-2xl font-semibold">Anando Deal</p>
             <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/60">
               Healthy Foods
             </p>
@@ -82,8 +82,8 @@ export default function AdminLoginPage() {
             Run the store without the busywork.
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-primary-foreground/70">
-            Track orders, manage your catalogue, verify bKash payments and keep an eye on
-            what is selling — all from one calm dashboard.
+            Track orders, manage your catalogue, verify bKash payments and keep an eye on what is
+            selling — all from one calm dashboard.
           </p>
           <ul className="mt-8 space-y-3 text-sm text-primary-foreground/80">
             {[
@@ -103,23 +103,23 @@ export default function AdminLoginPage() {
         </div>
 
         <p className="text-xs text-primary-foreground/50">
-          © {new Date().getFullYear()} Yaqeen Healthy Foods. Admin access only.
+          © {new Date().getFullYear()} Anando Deal Healthy Foods. Admin access only.
         </p>
       </div>
 
       <div className="flex items-center justify-center bg-background px-4 py-12 sm:px-8">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <img src={BRAND_LOGO_URL} alt="Yaqeen" className="h-11 w-11 rounded-full" />
+            <img src={BRAND_LOGO_URL} alt="Anando Deal" className="h-11 w-11 rounded-full" />
             <div>
-              <p className="font-display text-xl font-semibold">Yaqeen</p>
+              <p className="font-display text-xl font-semibold">Anando Deal</p>
               <p className="text-xs text-muted-foreground">Admin dashboard</p>
             </div>
           </div>
 
           <h2 className="text-2xl font-semibold">Sign in</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Use your Yaqeen admin account to continue.
+            Use your Anando Deal admin account to continue.
           </p>
 
           <form onSubmit={submit} className="mt-7 space-y-4" noValidate>
@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="admin@yaqeen.local"
+                  placeholder="admin@anandodeal.local"
                   className="pl-10"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -182,7 +182,10 @@ export default function AdminLoginPage() {
             <div className="mt-6 rounded-xl border bg-card p-3 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground">First time here?</p>
               <p className="mt-1">
-                Run <code className="rounded bg-muted px-1 py-0.5">npm run seed -w @yaqeen/api</code>{' '}
+                Run{' '}
+                <code className="rounded bg-muted px-1 py-0.5">
+                  npm run seed -w @anando-deal/api
+                </code>{' '}
                 then sign in with the email and password from{' '}
                 <code className="rounded bg-muted px-1 py-0.5">apps/api/.env</code>.
               </p>

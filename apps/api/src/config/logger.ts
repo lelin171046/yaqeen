@@ -4,7 +4,7 @@ import { env } from './env.js';
 export const logger = pino({
   level: env.LOG_LEVEL,
   base: {
-    service: 'yaqeen-api',
+    service: 'anando-deal-api',
     env: env.NODE_ENV,
   },
   redact: {

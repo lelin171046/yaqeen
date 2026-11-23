@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { apiHealthSchema } from '@yaqeen/shared';
+import { apiHealthSchema } from '@anando-deal/shared';
 import { databaseState } from '../config/db.js';
 
 export const healthRouter = Router();

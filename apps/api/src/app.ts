@@ -38,7 +38,7 @@ export function createApp() {
 
   app.get('/api', (_req, res) => {
     res.json({
-      name: 'Yaqeen API',
+      name: 'Anando Deal API',
       version: '0.1.0',
       environment: env.NODE_ENV,
     });

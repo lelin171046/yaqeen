@@ -1,9 +1,12 @@
 import {
+  DEFAULT_DELIVERY_BENEFITS,
   DEFAULT_HERO_CAROUSEL,
+  DELIVERY_BENEFIT_ICON_VALUES,
   HERO_SLIDE_THEMES,
   settingsUpdateSchema,
+  type DeliveryBenefitIcon,
   type HeroSlideTheme,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import {
   ArrowDown,
   ArrowUp,
@@ -17,12 +20,7 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  ErrorBlock,
-  Field,
-  LoadingBlock,
-  PageHeader,
-} from '@/components/admin/ui';
+import { ErrorBlock, Field, LoadingBlock, PageHeader } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -32,6 +30,7 @@ import {
   useSendTestEmail,
   useUpdateAdminSettings,
 } from '@/hooks/use-admin-settings';
+import { useCategories } from '@/hooks/use-catalog';
 import { uploadProductImage } from '@/lib/admin-upload';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { cn } from '@/lib/utils';
@@ -43,8 +42,18 @@ interface ZoneRow {
   isActive: boolean;
 }
 
+interface DeliveryBenefitRow {
+  id: string;
+  title: string;
+  description: string;
+  icon: DeliveryBenefitIcon;
+  isActive: boolean;
+}
+
 interface HeroSlideRow {
   id: string;
+  startsAt: string;
+  endsAt: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -62,9 +71,13 @@ interface SettingsFormState {
   supportPhone: string;
   supportEmail: string;
   bkashMerchantNumber: string;
+  nagadMerchantNumber: string;
+  rocketMerchantNumber: string;
   freeDeliveryThreshold: string;
   defaultDeliveryCharge: string;
   deliveryZones: ZoneRow[];
+  featuredCategoryIds: string[];
+  deliveryBenefits: DeliveryBenefitRow[];
   adminAlertEmails: string;
   adminAlertWhatsapp: string;
   facebook: string;
@@ -73,6 +86,22 @@ interface SettingsFormState {
   heroAutoplaySeconds: string;
   heroPauseOnHover: boolean;
   heroSlides: HeroSlideRow[];
+  flashDealsEnabled: boolean;
+}
+
+function toDateTimeLocal(value: string | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 function toFormState(settings: AdminSettingsDto): SettingsFormState {
@@ -83,12 +112,22 @@ function toFormState(settings: AdminSettingsDto): SettingsFormState {
     supportPhone: settings.supportPhone,
     supportEmail: settings.supportEmail,
     bkashMerchantNumber: settings.bkashMerchantNumber,
+    nagadMerchantNumber: settings.nagadMerchantNumber,
+    rocketMerchantNumber: settings.rocketMerchantNumber,
     freeDeliveryThreshold: String(settings.freeDeliveryThreshold),
     defaultDeliveryCharge: String(settings.defaultDeliveryCharge),
     deliveryZones: settings.deliveryZones.map((zone) => ({
       name: zone.name,
       charge: String(zone.charge),
       isActive: zone.isActive,
+    })),
+    featuredCategoryIds: settings.featuredCategoryIds,
+    deliveryBenefits: settings.deliveryBenefits.map((benefit) => ({
+      id: benefit.id,
+      title: benefit.title,
+      description: benefit.description ?? '',
+      icon: benefit.icon,
+      isActive: benefit.isActive,
     })),
     adminAlertEmails: settings.adminAlertEmails.join(', '),
     adminAlertWhatsapp: settings.adminAlertWhatsapp.join(', '),
@@ -99,6 +138,8 @@ function toFormState(settings: AdminSettingsDto): SettingsFormState {
     heroPauseOnHover: heroCarousel.pauseOnHover,
     heroSlides: heroCarousel.slides.map((slide) => ({
       id: slide.id,
+      startsAt: toDateTimeLocal(slide.startsAt),
+      endsAt: toDateTimeLocal(slide.endsAt),
       eyebrow: slide.eyebrow ?? '',
       title: slide.title,
       description: slide.description ?? '',
@@ -110,12 +151,15 @@ function toFormState(settings: AdminSettingsDto): SettingsFormState {
       theme: slide.theme,
       isActive: slide.isActive,
     })),
+    flashDealsEnabled: settings.flashDealsEnabled ?? true,
   };
 }
 
 function createHeroSlide(): HeroSlideRow {
   return {
     id: crypto.randomUUID(),
+    startsAt: '',
+    endsAt: '',
     eyebrow: 'New offer',
     title: 'Your next offer headline',
     description: 'Tell customers why this offer is worth clicking.',
@@ -125,6 +169,16 @@ function createHeroSlide(): HeroSlideRow {
     image: '',
     imageAlt: '',
     theme: 'forest',
+    isActive: true,
+  };
+}
+
+function createDeliveryBenefit(): DeliveryBenefitRow {
+  return {
+    id: crypto.randomUUID(),
+    title: 'New benefit',
+    description: 'Short customer-facing description',
+    icon: 'truck',
     isActive: true,
   };
 }
@@ -146,6 +200,7 @@ export default function AdminSettingsPage() {
 function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
   const updateSettings = useUpdateAdminSettings();
   const sendTestEmail = useSendTestEmail();
+  const { data: categories } = useCategories();
   const [form, setForm] = useState<SettingsFormState>(() => toFormState(settings));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
@@ -157,6 +212,15 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
       ...current,
       deliveryZones: current.deliveryZones.map((zone, position) =>
         position === index ? { ...zone, ...patch } : zone,
+      ),
+    }));
+  };
+
+  const updateBenefit = (id: string, patch: Partial<DeliveryBenefitRow>) => {
+    setForm((current) => ({
+      ...current,
+      deliveryBenefits: current.deliveryBenefits.map((benefit) =>
+        benefit.id === id ? { ...benefit, ...patch } : benefit,
       ),
     }));
   };
@@ -191,10 +255,38 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
     });
   };
 
-  const handleSlideImageUpload = async (
-    slide: HeroSlideRow,
-    file: File | undefined,
-  ) => {
+  const toggleFeaturedCategory = (id: string) => {
+    setForm((current) => ({
+      ...current,
+      featuredCategoryIds: current.featuredCategoryIds.includes(id)
+        ? current.featuredCategoryIds.filter((categoryId) => categoryId !== id)
+        : current.featuredCategoryIds.length >= 8
+          ? current.featuredCategoryIds
+          : [...current.featuredCategoryIds, id],
+    }));
+  };
+
+  const moveFeaturedCategory = (index: number, direction: -1 | 1) => {
+    setForm((current) => {
+      const target = index + direction;
+
+      if (target < 0 || target >= current.featuredCategoryIds.length) {
+        return current;
+      }
+
+      const featuredCategoryIds = [...current.featuredCategoryIds];
+      const [id] = featuredCategoryIds.splice(index, 1);
+
+      if (!id) {
+        return current;
+      }
+
+      featuredCategoryIds.splice(target, 0, id);
+      return { ...current, featuredCategoryIds };
+    });
+  };
+
+  const handleSlideImageUpload = async (slide: HeroSlideRow, file: File | undefined) => {
     if (!file) {
       return;
     }
@@ -251,13 +343,22 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
       supportPhone: form.supportPhone,
       supportEmail: form.supportEmail,
       bkashMerchantNumber: form.bkashMerchantNumber,
+      nagadMerchantNumber: form.nagadMerchantNumber,
+      rocketMerchantNumber: form.rocketMerchantNumber,
       freeDeliveryThreshold: form.freeDeliveryThreshold === '' ? 0 : form.freeDeliveryThreshold,
-      defaultDeliveryCharge:
-        form.defaultDeliveryCharge === '' ? 0 : form.defaultDeliveryCharge,
+      defaultDeliveryCharge: form.defaultDeliveryCharge === '' ? 0 : form.defaultDeliveryCharge,
       deliveryZones: form.deliveryZones.map((zone) => ({
         name: zone.name,
         charge: zone.charge === '' ? 0 : zone.charge,
         isActive: zone.isActive,
+      })),
+      featuredCategoryIds: form.featuredCategoryIds,
+      deliveryBenefits: form.deliveryBenefits.map((benefit) => ({
+        id: benefit.id,
+        title: benefit.title,
+        description: benefit.description,
+        icon: benefit.icon,
+        isActive: benefit.isActive,
       })),
       adminAlertEmails: form.adminAlertEmails
         .split(',')
@@ -272,12 +373,14 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
         instagram: form.instagram,
         whatsapp: form.whatsapp,
       },
+      flashDealsEnabled: form.flashDealsEnabled,
       heroCarousel: {
-        autoplaySeconds:
-          form.heroAutoplaySeconds === '' ? 6 : form.heroAutoplaySeconds,
+        autoplaySeconds: form.heroAutoplaySeconds === '' ? 6 : form.heroAutoplaySeconds,
         pauseOnHover: form.heroPauseOnHover,
         slides: form.heroSlides.map((slide) => ({
           id: slide.id,
+          startsAt: slide.startsAt,
+          endsAt: slide.endsAt,
           eyebrow: slide.eyebrow,
           title: slide.title,
           description: slide.description,
@@ -329,12 +432,32 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
       {formError && <ErrorBlock message={formError} />}
 
       <section className="rounded-2xl border bg-card p-5">
+        <h2 className="text-sm font-semibold">Flash deals</h2>
+        <label className="mt-4 flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-2.5 text-sm">
+          <span>
+            <span className="font-medium">Show flash deals on homepage</span>
+            <span className="block text-xs text-muted-foreground">
+              Turn this off to hide the section. Add or remove deals from each product.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={form.flashDealsEnabled}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, flashDealsEnabled: event.target.checked }))
+            }
+            className="h-4 w-4 accent-[var(--primary)]"
+          />
+        </label>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold">Homepage offer carousel</h2>
             <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-              Edit slide text, button labels and links, images, colors, order and
-              visibility. Set autoplay to 0 to stop automatic slide changes.
+              Edit slide text, button labels and links, images, colors, order and visibility. Set
+              autoplay to 0 to stop automatic slide changes.
             </p>
           </div>
           <Button
@@ -405,10 +528,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
           {form.heroSlides.map((slide, index) => (
             <div
               key={slide.id}
-              className={cn(
-                'rounded-xl border bg-background p-4',
-                !slide.isActive && 'opacity-70',
-              )}
+              className={cn('rounded-xl border bg-background p-4', !slide.isActive && 'opacity-70')}
             >
               <div className="flex flex-wrap items-start gap-3">
                 <div className="h-24 w-32 shrink-0 overflow-hidden rounded-xl border bg-muted">
@@ -435,7 +555,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[11px] font-medium',
                         slide.isActive
-                          ? 'bg-emerald-50 text-emerald-700'
+                          ? 'bg-secondary text-foreground'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >
@@ -452,10 +572,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                       accept="image/*"
                       className="hidden"
                       onChange={(event) =>
-                        void handleSlideImageUpload(
-                          slide,
-                          event.target.files?.[0],
-                        )
+                        void handleSlideImageUpload(slide, event.target.files?.[0])
                       }
                     />
                     <Button
@@ -502,9 +619,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                       onClick={() =>
                         setForm((current) => ({
                           ...current,
-                          heroSlides: current.heroSlides.filter(
-                            (item) => item.id !== slide.id,
-                          ),
+                          heroSlides: current.heroSlides.filter((item) => item.id !== slide.id),
                         }))
                       }
                       aria-label={`Remove slide ${index + 1}`}
@@ -518,9 +633,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <input
                     type="checkbox"
                     checked={slide.isActive}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { isActive: event.target.checked })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { isActive: event.target.checked })}
                     className="h-4 w-4 accent-[var(--primary)]"
                   />
                   Visible
@@ -537,9 +650,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-title-${index}`}
                     value={slide.title}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { title: event.target.value })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { title: event.target.value })}
                   />
                 </Field>
                 <Field
@@ -550,10 +661,8 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-eyebrow-${index}`}
                     value={slide.eyebrow}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { eyebrow: event.target.value })
-                    }
-                    placeholder="Freshly packed"
+                    onChange={(event) => updateSlide(slide.id, { eyebrow: event.target.value })}
+                    placeholder="Store update"
                   />
                 </Field>
                 <Field
@@ -564,9 +673,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-badge-${index}`}
                     value={slide.badge}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { badge: event.target.value })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { badge: event.target.value })}
                     placeholder="Up to 15% off"
                   />
                 </Field>
@@ -579,9 +686,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Textarea
                     id={`hero-description-${index}`}
                     value={slide.description}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { description: event.target.value })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { description: event.target.value })}
                     rows={3}
                   />
                 </Field>
@@ -593,9 +698,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-cta-label-${index}`}
                     value={slide.ctaLabel}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { ctaLabel: event.target.value })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { ctaLabel: event.target.value })}
                   />
                 </Field>
                 <Field
@@ -606,10 +709,8 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-cta-href-${index}`}
                     value={slide.ctaHref}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { ctaHref: event.target.value })
-                    }
-                    placeholder="/shop?category=nuts-seeds"
+                    onChange={(event) => updateSlide(slide.id, { ctaHref: event.target.value })}
+                    placeholder="/shop?category=your-category"
                   />
                 </Field>
                 <Field
@@ -634,6 +735,32 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   </Select>
                 </Field>
                 <Field
+                  label="Starts at"
+                  htmlFor={`hero-starts-${index}`}
+                  hint="Leave blank to start immediately"
+                  error={errors[`heroCarousel.slides.${index}.startsAt`]}
+                >
+                  <Input
+                    id={`hero-starts-${index}`}
+                    type="datetime-local"
+                    value={slide.startsAt}
+                    onChange={(event) => updateSlide(slide.id, { startsAt: event.target.value })}
+                  />
+                </Field>
+                <Field
+                  label="Ends at"
+                  htmlFor={`hero-ends-${index}`}
+                  hint="Leave blank to run until hidden"
+                  error={errors[`heroCarousel.slides.${index}.endsAt`]}
+                >
+                  <Input
+                    id={`hero-ends-${index}`}
+                    type="datetime-local"
+                    value={slide.endsAt}
+                    onChange={(event) => updateSlide(slide.id, { endsAt: event.target.value })}
+                  />
+                </Field>
+                <Field
                   label="Image alt text"
                   htmlFor={`hero-image-alt-${index}`}
                   error={errors[`heroCarousel.slides.${index}.imageAlt`]}
@@ -641,10 +768,8 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-image-alt-${index}`}
                     value={slide.imageAlt}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { imageAlt: event.target.value })
-                    }
-                    placeholder="Premium nuts gift box"
+                    onChange={(event) => updateSlide(slide.id, { imageAlt: event.target.value })}
+                    placeholder="Featured collection"
                   />
                 </Field>
                 <Field
@@ -657,10 +782,222 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   <Input
                     id={`hero-image-${index}`}
                     value={slide.image}
-                    onChange={(event) =>
-                      updateSlide(slide.id, { image: event.target.value })
-                    }
+                    onChange={(event) => updateSlide(slide.id, { image: event.target.value })}
                     placeholder="https://res.cloudinary.com/..."
+                  />
+                </Field>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Featured categories</h2>
+            <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+              Choose the categories used by the homepage category strip and side promotions.
+              Selected order controls their display order.
+            </p>
+          </div>
+        </div>
+
+        {errors['featuredCategoryIds'] && (
+          <p className="mt-3 text-xs text-destructive">{errors['featuredCategoryIds']}</p>
+        )}
+
+        {(categories ?? []).length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed bg-background px-3 py-6 text-center text-xs text-muted-foreground">
+            No categories yet. Add categories in the Categories page first.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {(categories ?? []).map((category) => {
+              const selectedIndex = form.featuredCategoryIds.indexOf(category._id);
+              const selected = selectedIndex >= 0;
+
+              return (
+                <div
+                  key={category._id}
+                  className={cn(
+                    'flex items-center justify-between gap-2 rounded-xl border bg-background px-3 py-2.5',
+                    selected && 'border-primary/40',
+                  )}
+                >
+                  <label className="flex min-w-0 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleFeaturedCategory(category._id)}
+                      className="h-4 w-4 shrink-0 accent-[var(--primary)]"
+                    />
+                    <span className="truncate">{category.name}</span>
+                  </label>
+                  {selected && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="mr-1 text-[11px] font-semibold text-primary">
+                        #{selectedIndex + 1}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => moveFeaturedCategory(selectedIndex, -1)}
+                        disabled={selectedIndex === 0}
+                        aria-label={`Move ${category.name} earlier`}
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => moveFeaturedCategory(selectedIndex, 1)}
+                        disabled={selectedIndex === form.featuredCategoryIds.length - 1}
+                        aria-label={`Move ${category.name} later`}
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Homepage delivery benefits</h2>
+            <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+              These points appear under the hero banner. Edit the copy, choose an icon, and hide any
+              row you do not want to show.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  deliveryBenefits: DEFAULT_DELIVERY_BENEFITS.map((benefit) => ({ ...benefit })),
+                }))
+              }
+            >
+              Reset defaults
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  deliveryBenefits: [...current.deliveryBenefits, createDeliveryBenefit()],
+                }))
+              }
+              disabled={form.deliveryBenefits.length >= 6}
+            >
+              <Plus />
+              Add benefit
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {form.deliveryBenefits.length === 0 && (
+            <p className="rounded-xl border border-dashed bg-background px-3 py-6 text-center text-xs text-muted-foreground">
+              No benefits will be shown on the homepage.
+            </p>
+          )}
+
+          {form.deliveryBenefits.map((benefit, index) => (
+            <div key={benefit.id} className="rounded-xl border bg-background p-3">
+              <div className="grid gap-2 sm:grid-cols-[1fr_140px_auto_auto] sm:items-end">
+                <Field
+                  label="Title"
+                  htmlFor={`benefit-title-${index}`}
+                  error={errors[`deliveryBenefits.${index}.title`]}
+                >
+                  <Input
+                    id={`benefit-title-${index}`}
+                    value={benefit.title}
+                    onChange={(event) => updateBenefit(benefit.id, { title: event.target.value })}
+                    className="h-10"
+                  />
+                </Field>
+                <Field
+                  label="Icon"
+                  htmlFor={`benefit-icon-${index}`}
+                  error={errors[`deliveryBenefits.${index}.icon`]}
+                >
+                  <Select
+                    id={`benefit-icon-${index}`}
+                    value={benefit.icon}
+                    onChange={(event) =>
+                      updateBenefit(benefit.id, {
+                        icon: event.target.value as DeliveryBenefitIcon,
+                      })
+                    }
+                    className="h-10"
+                  >
+                    {DELIVERY_BENEFIT_ICON_VALUES.map((icon) => (
+                      <option key={icon} value={icon}>
+                        {icon}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <label className="flex h-10 items-center gap-2 rounded-lg border bg-card px-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={benefit.isActive}
+                    onChange={(event) =>
+                      updateBenefit(benefit.id, { isActive: event.target.checked })
+                    }
+                    className="h-4 w-4 accent-[var(--primary)]"
+                  />
+                  Visible
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 text-destructive"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      deliveryBenefits: current.deliveryBenefits.filter(
+                        (item) => item.id !== benefit.id,
+                      ),
+                    }))
+                  }
+                  aria-label={`Remove benefit ${index + 1}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="mt-2">
+                <Field
+                  label="Description"
+                  htmlFor={`benefit-description-${index}`}
+                  error={errors[`deliveryBenefits.${index}.description`]}
+                >
+                  <Input
+                    id={`benefit-description-${index}`}
+                    value={benefit.description}
+                    onChange={(event) =>
+                      updateBenefit(benefit.id, { description: event.target.value })
+                    }
+                    placeholder="Short customer-facing description"
+                    className="h-10"
                   />
                 </Field>
               </div>
@@ -673,7 +1010,12 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
         <section className="rounded-2xl border bg-card p-5">
           <h2 className="text-sm font-semibold">Store details</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Store name" htmlFor="storeName" error={errors.storeName} className="sm:col-span-2">
+            <Field
+              label="Store name"
+              htmlFor="storeName"
+              error={errors.storeName}
+              className="sm:col-span-2"
+            >
               <Input
                 id="storeName"
                 value={form.storeName}
@@ -689,10 +1031,15 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, supportPhone: event.target.value }))
                 }
-                placeholder="+8801799573916"
+                placeholder="+880 1770-937260"
               />
             </Field>
-            <Field label="Support email" htmlFor="supportEmail" error={errors.supportEmail}>
+            <Field
+              label="Support email"
+              htmlFor="supportEmail"
+              hint="Contact form messages are emailed to this address."
+              error={errors.supportEmail}
+            >
               <Input
                 id="supportEmail"
                 type="email"
@@ -700,14 +1047,13 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, supportEmail: event.target.value }))
                 }
-                placeholder="hello@yaqeen.com"
+                placeholder="rabuofficial007@gmail.com"
               />
             </Field>
             <Field
               label="bKash merchant number"
               htmlFor="bkashMerchantNumber"
               error={errors.bkashMerchantNumber}
-              className="sm:col-span-2"
             >
               <Input
                 id="bkashMerchantNumber"
@@ -716,6 +1062,40 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                   setForm((current) => ({
                     ...current,
                     bkashMerchantNumber: event.target.value,
+                  }))
+                }
+                placeholder="01XXXXXXXXX"
+              />
+            </Field>
+            <Field
+              label="Nagad merchant number"
+              htmlFor="nagadMerchantNumber"
+              error={errors.nagadMerchantNumber}
+            >
+              <Input
+                id="nagadMerchantNumber"
+                value={form.nagadMerchantNumber}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    nagadMerchantNumber: event.target.value,
+                  }))
+                }
+                placeholder="01XXXXXXXXX"
+              />
+            </Field>
+            <Field
+              label="Rocket merchant number"
+              htmlFor="rocketMerchantNumber"
+              error={errors.rocketMerchantNumber}
+            >
+              <Input
+                id="rocketMerchantNumber"
+                value={form.rocketMerchantNumber}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    rocketMerchantNumber: event.target.value,
                   }))
                 }
                 placeholder="01XXXXXXXXX"
@@ -792,26 +1172,30 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
               {form.deliveryZones.map((zone, index) => (
                 <div key={index} className="rounded-xl border bg-background p-3">
                   <div className="grid gap-2 sm:grid-cols-[1fr_110px_auto_auto] sm:items-end">
-                    <Field label="Zone name" htmlFor={`zone-name-${index}`} error={errors[`deliveryZones.${index}.name`]}>
+                    <Field
+                      label="Zone name"
+                      htmlFor={`zone-name-${index}`}
+                      error={errors[`deliveryZones.${index}.name`]}
+                    >
                       <Input
                         id={`zone-name-${index}`}
                         value={zone.name}
-                        onChange={(event) =>
-                          updateZone(index, { name: event.target.value })
-                        }
+                        onChange={(event) => updateZone(index, { name: event.target.value })}
                         placeholder="Inside Dhaka"
                         className="h-10"
                       />
                     </Field>
-                    <Field label="Charge (৳)" htmlFor={`zone-charge-${index}`} error={errors[`deliveryZones.${index}.charge`]}>
+                    <Field
+                      label="Charge (৳)"
+                      htmlFor={`zone-charge-${index}`}
+                      error={errors[`deliveryZones.${index}.charge`]}
+                    >
                       <Input
                         id={`zone-charge-${index}`}
                         type="number"
                         min="0"
                         value={zone.charge}
-                        onChange={(event) =>
-                          updateZone(index, { charge: event.target.value })
-                        }
+                        onChange={(event) => updateZone(index, { charge: event.target.value })}
                         className="h-10"
                       />
                     </Field>
@@ -819,9 +1203,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                       <input
                         type="checkbox"
                         checked={zone.isActive}
-                        onChange={(event) =>
-                          updateZone(index, { isActive: event.target.checked })
-                        }
+                        onChange={(event) => updateZone(index, { isActive: event.target.checked })}
                         className="h-4 w-4 accent-[var(--primary)]"
                       />
                       Active
@@ -862,7 +1244,11 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
             Comma-separated recipients for new order alerts.
           </p>
           <div className="mt-4 space-y-4">
-            <Field label="Alert emails" htmlFor="adminAlertEmails" error={errors['adminAlertEmails.0']}>
+            <Field
+              label="Alert emails"
+              htmlFor="adminAlertEmails"
+              error={errors['adminAlertEmails.0']}
+            >
               <Input
                 id="adminAlertEmails"
                 value={form.adminAlertEmails}
@@ -872,7 +1258,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                     adminAlertEmails: event.target.value,
                   }))
                 }
-                placeholder="owner@yaqeen.com, ops@yaqeen.com"
+                placeholder="owner@anandodeal.com, ops@anandodeal.com"
               />
             </Field>
             <Field
@@ -889,7 +1275,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                     adminAlertWhatsapp: event.target.value,
                   }))
                 }
-                placeholder="+8801799573916"
+                placeholder="+880 1770-937260"
               />
             </Field>
           </div>
@@ -898,8 +1284,8 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
             className={cn(
               'mt-4 rounded-xl border p-3 text-xs',
               settings.emailConfigured
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-amber-200 bg-amber-50 text-amber-900',
+                ? 'border-black bg-secondary text-foreground'
+                : 'border-border bg-muted text-muted-foreground',
             )}
           >
             <p className="font-semibold">
@@ -922,11 +1308,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
               onClick={handleSendTestEmail}
               disabled={sendTestEmail.isPending}
             >
-              {sendTestEmail.isPending ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Send />
-              )}
+              {sendTestEmail.isPending ? <Loader2 className="animate-spin" /> : <Send />}
               Send test email
             </Button>
           </div>
@@ -942,7 +1324,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, facebook: event.target.value }))
                 }
-                placeholder="https://facebook.com/yaqeen"
+                placeholder="https://facebook.com/Anando Deal"
               />
             </Field>
             <Field label="Instagram" htmlFor="instagram" error={errors['socialLinks.instagram']}>
@@ -952,7 +1334,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, instagram: event.target.value }))
                 }
-                placeholder="https://instagram.com/yaqeen"
+                placeholder="https://instagram.com/Anando Deal"
               />
             </Field>
             <Field label="WhatsApp" htmlFor="whatsapp" error={errors['socialLinks.whatsapp']}>
@@ -962,7 +1344,7 @@ function SettingsForm({ settings }: { settings: AdminSettingsDto }) {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, whatsapp: event.target.value }))
                 }
-                placeholder="https://wa.me/8801799573916"
+                placeholder="https://wa.me/8801770937260"
               />
             </Field>
           </div>

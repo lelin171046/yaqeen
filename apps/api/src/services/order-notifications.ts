@@ -1,19 +1,11 @@
-import { formatBdt } from '@yaqeen/shared';
+import { PAYMENT_METHOD_LABELS, formatBdt, type PaymentMethod } from '@anando-deal/shared';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { NotificationLogModel } from '../models/notification-log.js';
 import type { OrderDocument } from '../models/order.js';
 import { getAlertEmailRecipients } from '../modules/settings/settings.service.js';
+import { escapeHtml } from '../utils/html.js';
 import { getEmailStatus, sendEmail } from './email.js';
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
 
 function formatAddress(order: OrderDocument): string {
   return [order.customer.address, order.customer.area, order.customer.district]
@@ -28,6 +20,9 @@ function buildOrderEmail(order: OrderDocument): { subject: string; text: string;
   );
   const address = formatAddress(order);
   const notes = order.customer.notes || 'None';
+  const paymentLabel =
+    PAYMENT_METHOD_LABELS[order.paymentMethod as PaymentMethod] ?? order.paymentMethod;
+  const paymentTrxId = order.paymentTrxId || order.bkashTrxId || '';
   const subject = `New order ${order.orderNumber} - ${formatBdt(order.total)}`;
 
   const text = [
@@ -45,8 +40,8 @@ function buildOrderEmail(order: OrderDocument): { subject: string; text: string;
     `Subtotal: ${formatBdt(order.subtotal)}`,
     `Delivery: ${formatBdt(order.deliveryCharge)}`,
     `Total: ${formatBdt(order.total)}`,
-    `Payment: ${order.paymentMethod} (${order.paymentStatus})`,
-    order.bkashTrxId ? `bKash transaction: ${order.bkashTrxId}` : '',
+    `Payment: ${paymentLabel} (${order.paymentStatus})`,
+    paymentTrxId ? `Transaction ID: ${paymentTrxId}` : '',
   ]
     .filter((line) => line !== '')
     .join('\n');
@@ -70,10 +65,9 @@ function buildOrderEmail(order: OrderDocument): { subject: string; text: string;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111827;">
       <h2 style="margin:0 0 4px;">New order ${escapeHtml(order.orderNumber)}</h2>
-      <p style="margin:0 0 20px;color:#6b7280;">Placed ${order.createdAt.toLocaleString(
-        'en-BD',
-        { timeZone: 'Asia/Dhaka' },
-      )}</p>
+      <p style="margin:0 0 20px;color:#6b7280;">Placed ${order.createdAt.toLocaleString('en-BD', {
+        timeZone: 'Asia/Dhaka',
+      })}</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
         <tr><td style="padding:4px 0;color:#6b7280;">Customer</td><td style="padding:4px 0;text-align:right;">${escapeHtml(
           order.customer.name,
@@ -106,11 +100,9 @@ function buildOrderEmail(order: OrderDocument): { subject: string; text: string;
         )}</td></tr>
       </table>
       <p style="margin:0;color:#6b7280;">Payment: ${escapeHtml(
-        order.paymentMethod,
+        paymentLabel,
       )} (${escapeHtml(order.paymentStatus)})${
-        order.bkashTrxId
-          ? `<br>bKash transaction: ${escapeHtml(order.bkashTrxId)}`
-          : ''
+        paymentTrxId ? `<br>Transaction ID: ${escapeHtml(paymentTrxId)}` : ''
       }</p>
     </div>`;
 

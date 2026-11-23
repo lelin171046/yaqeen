@@ -4,7 +4,7 @@ import {
   ORDER_SOURCES,
   ORDER_STATUSES,
   PAYMENT_METHODS,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
 
 const customerSchema = new Schema(
@@ -86,6 +86,7 @@ const orderSchema = new Schema(
       enum: [...ORDER_PAYMENT_STATUSES],
       default: 'UNPAID',
     },
+    paymentTrxId: { type: String, trim: true, maxlength: 60, default: '' },
     bkashTrxId: { type: String, trim: true, maxlength: 60, default: '' },
     status: {
       type: String,

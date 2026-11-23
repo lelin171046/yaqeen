@@ -1,6 +1,8 @@
-import { settingsUpdateSchema } from '@yaqeen/shared';
+import { settingsUpdateSchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { z } from 'zod';
+import { testEmailRateLimiter } from '../../middleware/rate-limit.js';
+import { requireOwner } from '../../middleware/require-owner.js';
 import { getEmailStatus, sendEmail } from '../../services/email.js';
 import { AppError } from '../../utils/app-error.js';
 import { asyncHandler } from '../../utils/async-handler.js';
@@ -29,6 +31,8 @@ const testEmailSchema = z.object({
 
 adminSettingsRouter.post(
   '/test-email',
+  testEmailRateLimiter,
+  requireOwner,
   asyncHandler(async (req, res) => {
     const input = testEmailSchema.parse(req.body ?? {});
     const recipients = await getAlertEmailRecipients();
@@ -49,9 +53,9 @@ adminSettingsRouter.post(
 
     const result = await sendEmail({
       to: recipient,
-      subject: 'Yaqeen order email test',
-      text: 'Your Yaqeen order notification email is configured correctly.',
-      html: '<p>Your Yaqeen order notification email is configured correctly.</p>',
+      subject: 'Anando Deal order email test',
+      text: 'Your Anando Deal order notification email is configured correctly.',
+      html: '<p>Your Anando Deal order notification email is configured correctly.</p>',
     });
 
     res.json({

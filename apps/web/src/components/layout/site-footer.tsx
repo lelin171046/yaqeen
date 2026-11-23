@@ -1,21 +1,16 @@
-import { BRAND_LOGO_URL } from '@yaqeen/shared';
+import { BRAND_LOGO_URL } from '@anando-deal/shared';
 import { Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useCategories } from '@/hooks/use-catalog';
 import { useHealth } from '@/hooks/use-health';
 import { cn } from '@/lib/utils';
 import { getWhatsAppHref } from '@/lib/whatsapp';
 
-const shopLinks = [
-  { label: 'Nuts & seeds', category: 'nuts-seeds' },
-  { label: 'Dry fruits', category: 'dry-fruits' },
-  { label: 'Diet foods', category: 'diet-foods' },
-  { label: 'Gift boxes', category: 'gift-boxes' },
-];
-
 export function SiteFooter() {
   const { data: health, isError } = useHealth();
-  const whatsappHref = getWhatsAppHref('Hi Yaqeen, I need help with an order.');
+  const { data: categories } = useCategories();
+  const whatsappHref = getWhatsAppHref('Hi Anando Deal, I need help with an order.');
 
   return (
     <footer className="border-t border-border/70 bg-card">
@@ -23,16 +18,16 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-2">
             <img src={BRAND_LOGO_URL} alt="" className="h-9 w-9 rounded-full" />
-            <span className="font-display text-xl font-semibold">Yaqeen</span>
+            <span className="font-display text-xl font-semibold">Anando Deal</span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-            Natural nuts, dry foods and nutrition you can trust, delivered across Bangladesh.
+            Everyday products with clear prices, real stock, and delivery across Bangladesh.
           </p>
           <div className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground">
             <span
               className={cn(
                 'h-2 w-2 rounded-full',
-                health ? 'bg-emerald-500' : isError ? 'bg-rose-500' : 'bg-amber-400',
+                health ? 'bg-black' : isError ? 'bg-neutral-500' : 'bg-neutral-300',
               )}
             />
             {health ? 'Store online' : isError ? 'Store offline' : 'Connecting'}
@@ -42,13 +37,15 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold">Shop</h3>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            {shopLinks.map((link) => (
-              <li key={link.category}>
-                <Link
-                  to={`/shop?category=${link.category}`}
-                  className="hover:text-foreground"
-                >
-                  {link.label}
+            <li>
+              <Link to="/shop" className="hover:text-foreground">
+                All products
+              </Link>
+            </li>
+            {(categories ?? []).slice(0, 4).map((category) => (
+              <li key={category._id}>
+                <Link to={`/shop?category=${category.slug}`} className="hover:text-foreground">
+                  {category.name}
                 </Link>
               </li>
             ))}
@@ -69,9 +66,9 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <a href={whatsappHref} target="_blank" rel="noreferrer" className="hover:text-foreground">
+              <Link to="/contact" className="hover:text-foreground">
                 Contact us
-              </a>
+              </Link>
             </li>
             <li>
               <Link to="/checkout" className="hover:text-foreground">
@@ -84,7 +81,7 @@ export function SiteFooter() {
         <div>
           <h3 className="text-sm font-semibold">Stay connected</h3>
           <p className="mt-3 text-sm text-muted-foreground">
-            New arrivals, offers and healthy ideas.
+            New arrivals, offers, and store updates.
           </p>
           <Button asChild variant="outline" className="mt-4">
             <a href={whatsappHref} target="_blank" rel="noreferrer">
@@ -97,7 +94,7 @@ export function SiteFooter() {
 
       <div className="border-t border-border/70 px-4 py-5 sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 text-xs text-muted-foreground sm:flex-row">
-          <p>© {new Date().getFullYear()} Yaqeen. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Anando Deal. All rights reserved.</p>
           <p>Made with care in Bangladesh.</p>
         </div>
       </div>

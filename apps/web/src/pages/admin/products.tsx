@@ -1,4 +1,4 @@
-import { formatBdt } from '@yaqeen/shared';
+import { formatBdt } from '@anando-deal/shared';
 import { ExternalLink, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -54,10 +54,7 @@ export default function AdminProductsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Products"
-        description="Create, edit and manage your catalogue and stock."
-      >
+      <PageHeader title="Products" description="Create, edit and manage your catalogue and stock.">
         <Button asChild size="sm">
           <Link to="/admin/products/new">
             <Plus />
@@ -92,9 +89,7 @@ export default function AdminProductsPage() {
         <div className="flex gap-2">
           <Select
             value={category}
-            onChange={(event) =>
-              applyFilter(() => setCategory(event.target.value))
-            }
+            onChange={(event) => applyFilter(() => setCategory(event.target.value))}
             aria-label="Filter by category"
             className="h-10 w-44 text-xs"
           >
@@ -187,9 +182,9 @@ export default function AdminProductsPage() {
                           <span
                             className={
                               product.totalStock === 0
-                                ? 'font-semibold text-rose-600'
+                                ? 'font-semibold text-foreground'
                                 : product.totalStock <= 10
-                                  ? 'font-semibold text-amber-600'
+                                  ? 'font-semibold text-muted-foreground'
                                   : ''
                             }
                           >
@@ -198,7 +193,10 @@ export default function AdminProductsPage() {
                         </td>
                         <td className="px-5 py-3">
                           {product.isActive ? (
-                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                            <Badge
+                              variant="outline"
+                              className="border-black bg-secondary text-foreground"
+                            >
                               Active
                             </Badge>
                           ) : (

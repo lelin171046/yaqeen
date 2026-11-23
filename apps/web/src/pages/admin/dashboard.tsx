@@ -4,7 +4,7 @@ import {
   formatBdt,
   type OrderStatus,
   type PaymentMethod,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import {
   ArrowUpRight,
   BadgeDollarSign,
@@ -114,10 +114,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="A live snapshot of sales, orders and stock."
-      >
+      <PageHeader title="Dashboard" description="A live snapshot of sales, orders and stock.">
         <Select
           value={String(range)}
           onChange={(event) => setRange(Number(event.target.value))}
@@ -130,12 +127,7 @@ export default function AdminDashboardPage() {
             </option>
           ))}
         </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className={isFetching ? 'animate-spin' : undefined} />
           Refresh
         </Button>
@@ -181,7 +173,7 @@ export default function AdminDashboardPage() {
                 Revenue from non-cancelled orders, last {data.rangeDays} days
               </p>
             </div>
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
               {formatBdt(kpis.revenue)}
             </span>
           </div>
@@ -252,10 +244,7 @@ export default function AdminDashboardPage() {
                       paddingAngle={2}
                     >
                       {data.statusBreakdown.map((entry, index) => (
-                        <Cell
-                          key={entry.status}
-                          fill={chartColors[index % chartColors.length]}
-                        />
+                        <Cell key={entry.status} fill={chartColors[index % chartColors.length]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -405,9 +394,7 @@ export default function AdminDashboardPage() {
                       <td className="px-5 py-3">
                         <StatusBadge value={order.status} />
                       </td>
-                      <td className="px-5 py-3 text-right font-medium">
-                        {formatBdt(order.total)}
-                      </td>
+                      <td className="px-5 py-3 text-right font-medium">{formatBdt(order.total)}</td>
                       <td className="px-5 py-3 text-right text-xs text-muted-foreground">
                         {formatDateTime(order.createdAt)}
                       </td>
@@ -441,8 +428,8 @@ export default function AdminDashboardPage() {
                     <span
                       className={
                         item.stock === 0
-                          ? 'shrink-0 rounded-full bg-rose-50 px-2 py-1 font-semibold text-rose-700'
-                          : 'shrink-0 rounded-full bg-amber-50 px-2 py-1 font-semibold text-amber-700'
+                          ? 'shrink-0 rounded-full bg-muted px-2 py-1 font-semibold text-muted-foreground'
+                          : 'shrink-0 rounded-full bg-secondary px-2 py-1 font-semibold text-foreground'
                       }
                     >
                       {item.stock === 0 ? 'Out' : `${item.stock} left`}
@@ -459,9 +446,7 @@ export default function AdminDashboardPage() {
           <div className="rounded-2xl border bg-card p-5">
             <h2 className="text-sm font-semibold">Ad links</h2>
             {data.linkPerformance.length === 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">
-                No campaign links created yet.
-              </p>
+              <p className="mt-3 text-xs text-muted-foreground">No campaign links created yet.</p>
             ) : (
               <ul className="mt-3 space-y-2.5 text-xs">
                 {data.linkPerformance.map((link) => (

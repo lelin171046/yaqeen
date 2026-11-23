@@ -1,4 +1,4 @@
-import type { OrderLinkInput, OrderLinkUpdateInput } from '@yaqeen/shared';
+import type { OrderLinkInput, OrderLinkUpdateInput } from '@anando-deal/shared';
 import { createHash } from 'node:crypto';
 import { LinkClickModel } from '../../models/link-click.js';
 import { ProductModel } from '../../models/product.js';

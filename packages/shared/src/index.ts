@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { formatBdt } from './money.js';
 
-export const APP_NAME = 'Yaqeen';
-export const APP_TAGLINE = 'Natural nuts, dry foods and nutrition you can trust.';
+export const APP_NAME = 'Anando Deal';
+export const APP_TAGLINE = 'All kinds of products for every season and every need.';
 
 export const BRAND_LOGO_URL =
-  'https://res.cloudinary.com/dcdmktxtz/image/upload/v1793672666/Yaqeen_Healthy_Foods_Emblem_pagvrd.png';
-export const STORE_WHATSAPP = '+8801799573916';
+  'https://res.cloudinary.com/dcdmktxtz/image/upload/v1795029495/762944462_122125767986775176_6251977437859688810_n_tofy6h.jpg';
+export const STORE_WHATSAPP = '+8801770937260';
+export const SUPPORT_EMAIL = 'rabuofficial007@gmail.com';
+export const SUPPORT_PHONE = '+880 1770-937260';
 
 export const CURRENCY = 'BDT';
 export const CURRENCY_SYMBOL = '৳';
@@ -52,12 +54,27 @@ export const ORDER_COURIER_LABELS: Record<OrderCourier, string> = {
   REDX: 'RedX',
 };
 
-export const PAYMENT_METHODS = ['COD', 'BKASH_MANUAL', 'BKASH_PGW'] as const;
+export const PAYMENT_METHODS = [
+  'COD',
+  'BKASH_MANUAL',
+  'NAGAD_MANUAL',
+  'ROCKET_MANUAL',
+  'BKASH_PGW',
+] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const MANUAL_PAYMENT_METHODS = ['BKASH_MANUAL', 'NAGAD_MANUAL', 'ROCKET_MANUAL'] as const;
+export type ManualPaymentMethod = (typeof MANUAL_PAYMENT_METHODS)[number];
+
+export function isManualPaymentMethod(method: string): method is ManualPaymentMethod {
+  return (MANUAL_PAYMENT_METHODS as readonly string[]).includes(method);
+}
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   COD: 'Cash on delivery',
-  BKASH_MANUAL: 'bKash (manual transfer)',
+  BKASH_MANUAL: 'bKash (send money)',
+  NAGAD_MANUAL: 'Nagad (send money)',
+  ROCKET_MANUAL: 'Rocket (send money)',
   BKASH_PGW: 'bKash online payment',
 };
 
@@ -72,15 +89,16 @@ export const objectIdSchema = z
   .trim()
   .regex(/^[a-f\d]{24}$/i, 'Invalid id');
 
+const optionalDateSchema = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.coerce.date().optional(),
+);
+
 export const bdPhoneSchema = z
   .string()
   .trim()
   .transform((value) => value.replace(/[\s-]/g, ''))
-  .pipe(
-    z
-      .string()
-      .regex(/^(?:\+?880|0)1[3-9]\d{8}$/, 'Enter a valid Bangladeshi mobile number'),
-  );
+  .pipe(z.string().regex(/^(?:\+?880|0)1[3-9]\d{8}$/, 'Enter a valid Bangladeshi mobile number'));
 
 export const customerSchema = z.object({
   name: z.string().trim().min(2, 'Name is required').max(120),
@@ -116,15 +134,18 @@ export const createOrderSchema = z
     items: z.array(orderItemSchema).min(1, 'Add at least one product').max(20),
     customer: customerSchema,
     paymentMethod: z.enum(PAYMENT_METHODS).default('COD'),
+    paymentTrxId: z.string().trim().min(4).max(60).optional().or(z.literal('')),
     bkashTrxId: z.string().trim().min(4).max(60).optional().or(z.literal('')),
     source: orderSourceSchema.optional(),
     idempotencyKey: z.string().trim().min(8).max(120).optional(),
   })
   .refine(
-    (value) => value.paymentMethod !== 'BKASH_MANUAL' || Boolean(value.bkashTrxId),
+    (value) =>
+      !isManualPaymentMethod(value.paymentMethod) ||
+      Boolean(value.paymentTrxId || value.bkashTrxId),
     {
-      message: 'bKash transaction ID is required for manual bKash payments',
-      path: ['bkashTrxId'],
+      message: 'Transaction ID is required for send-money payments',
+      path: ['paymentTrxId'],
     },
   );
 
@@ -187,6 +208,57 @@ export const paginationSchema = z.object({
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
 
+export const SUPPORT_TOPICS = ['ORDER', 'PRODUCT', 'RETURN', 'PAYMENT', 'OTHER'] as const;
+export type SupportTopic = (typeof SUPPORT_TOPICS)[number];
+
+export const SUPPORT_TOPIC_LABELS: Record<SupportTopic, string> = {
+  ORDER: 'Order help',
+  PRODUCT: 'Product question',
+  RETURN: 'Return or refund',
+  PAYMENT: 'Payment question',
+  OTHER: 'Something else',
+};
+
+export const SUPPORT_MESSAGE_STATUSES = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'ARCHIVED'] as const;
+export type SupportMessageStatus = (typeof SUPPORT_MESSAGE_STATUSES)[number];
+
+export const SUPPORT_MESSAGE_STATUS_LABELS: Record<SupportMessageStatus, string> = {
+  NEW: 'New',
+  IN_PROGRESS: 'In progress',
+  RESOLVED: 'Resolved',
+  ARCHIVED: 'Archived',
+};
+
+export const supportMessageInputSchema = z.object({
+  name: z.string().trim().min(2, 'Name is required').max(120),
+  email: z.string().trim().email('Enter a valid email').max(160),
+  phone: bdPhoneSchema.optional().or(z.literal('')),
+  topic: z.enum(SUPPORT_TOPICS).default('OTHER'),
+  orderNumber: z.string().trim().max(40).optional().or(z.literal('')),
+  message: z.string().trim().min(10, 'Tell us a little more (at least 10 characters)').max(2000),
+});
+
+export type SupportMessageInput = z.infer<typeof supportMessageInputSchema>;
+
+export const supportMessageQuerySchema = paginationSchema.extend({
+  status: z.enum(SUPPORT_MESSAGE_STATUSES).optional(),
+  search: z.string().trim().max(120).optional(),
+});
+
+export type SupportMessageQueryInput = z.infer<typeof supportMessageQuerySchema>;
+
+export const supportMessageStatusUpdateSchema = z.object({
+  status: z.enum(SUPPORT_MESSAGE_STATUSES),
+});
+
+export type SupportMessageStatusUpdateInput = z.infer<typeof supportMessageStatusUpdateSchema>;
+
+export const supportReplySchema = z.object({
+  message: z.string().trim().min(2, 'Write a reply').max(2000),
+});
+
+export type SupportReplyInput = z.infer<typeof supportReplySchema>;
+
 export const slugSchema = z
   .string()
   .trim()
@@ -230,6 +302,9 @@ export const productVariantSchema = z.object({
   compareAtPrice: z.coerce.number().min(0).optional(),
   stock: z.coerce.number().int().min(0).default(0),
   sku: z.string().trim().max(60).optional().or(z.literal('')),
+  flashPrice: z.coerce.number().min(1).optional(),
+  flashStartsAt: optionalDateSchema,
+  flashEndsAt: optionalDateSchema,
 });
 
 export type ProductVariantInput = z.infer<typeof productVariantSchema>;
@@ -271,9 +346,7 @@ export const productUpdateSchema = productInputSchema.partial();
 export type ProductInput = z.infer<typeof productInputSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 
-const booleanQuerySchema = z
-  .enum(['true', 'false'])
-  .transform((value) => value === 'true');
+const booleanQuerySchema = z.enum(['true', 'false']).transform((value) => value === 'true');
 
 export const productSortSchema = z.enum(['newest', 'price_asc', 'price_desc', 'name_asc']);
 
@@ -281,6 +354,7 @@ export const productQuerySchema = paginationSchema.extend({
   search: z.string().trim().max(100).optional(),
   category: z.string().trim().max(180).optional(),
   featured: booleanQuerySchema.optional(),
+  flashSale: booleanQuerySchema.optional(),
   active: booleanQuerySchema.optional(),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),
@@ -309,13 +383,7 @@ export type DashboardQueryInput = z.infer<typeof dashboardQuerySchema>;
 
 const optionalUrlSchema = z.string().trim().url('Enter a valid URL').optional().or(z.literal(''));
 
-export const HERO_SLIDE_THEME_VALUES = [
-  'forest',
-  'amber',
-  'navy',
-  'berry',
-  'slate',
-] as const;
+export const HERO_SLIDE_THEME_VALUES = ['forest', 'amber', 'navy', 'berry', 'slate'] as const;
 
 export type HeroSlideTheme = (typeof HERO_SLIDE_THEME_VALUES)[number];
 
@@ -323,19 +391,19 @@ export const HERO_SLIDE_THEMES: Array<{
   value: HeroSlideTheme;
   label: string;
 }> = [
-  { value: 'forest', label: 'Forest green' },
-  { value: 'amber', label: 'Warm amber' },
-  { value: 'navy', label: 'Deep navy' },
-  { value: 'berry', label: 'Berry red' },
-  { value: 'slate', label: 'Cool slate' },
+  { value: 'forest', label: 'Charcoal' },
+  { value: 'amber', label: 'Graphite' },
+  { value: 'navy', label: 'Deep black' },
+  { value: 'berry', label: 'Slate gray' },
+  { value: 'slate', label: 'Soft charcoal' },
 ];
 
 export const HERO_SLIDE_THEME_GRADIENTS: Record<HeroSlideTheme, string> = {
-  forest: 'linear-gradient(135deg, #052e16 0%, #166534 48%, #0f766e 100%)',
-  amber: 'linear-gradient(135deg, #3b1d0f 0%, #7c3f1d 48%, #c07a32 100%)',
-  navy: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 48%, #0f766e 100%)',
-  berry: 'linear-gradient(135deg, #4a0d2d 0%, #9d174d 48%, #be185d 100%)',
-  slate: 'linear-gradient(135deg, #1f2937 0%, #334155 48%, #0f766e 100%)',
+  forest: 'linear-gradient(135deg, #0a0a0a 0%, #262626 52%, #4d4d4d 100%)',
+  amber: 'linear-gradient(135deg, #1a1a1a 0%, #3d3d3d 48%, #666666 100%)',
+  navy: 'linear-gradient(135deg, #000000 0%, #1f1f1f 52%, #404040 100%)',
+  berry: 'linear-gradient(135deg, #222222 0%, #4d4d4d 48%, #737373 100%)',
+  slate: 'linear-gradient(135deg, #111111 0%, #2b2b2b 52%, #525252 100%)',
 };
 
 const storefrontLinkSchema = z
@@ -365,6 +433,8 @@ export const heroSlideSettingsSchema = z.object({
   imageAlt: z.string().trim().max(180).default(''),
   theme: z.enum(HERO_SLIDE_THEME_VALUES).default('forest'),
   isActive: z.boolean().default(true),
+  startsAt: optionalDateSchema,
+  endsAt: optionalDateSchema,
 });
 
 export const heroCarouselSettingsSchema = z.object({
@@ -381,28 +451,42 @@ export const DEFAULT_HERO_CAROUSEL: HeroCarouselSettings = {
   pauseOnHover: true,
   slides: [
     {
-      id: 'fresh-nuts',
-      eyebrow: 'Freshly packed',
-      title: 'Nuts, seeds and dry fruits you can trust',
+      id: 'winter-essentials',
+      eyebrow: 'Winter collection',
+      title: 'Stay warm with winter essentials',
       description:
-        'Premium kaju, badam, pista, dates and everyday nutrition, packed fresh in small batches and delivered across Bangladesh.',
-      ctaLabel: 'Shop nuts & seeds',
-      ctaHref: '/shop?category=nuts-seeds',
-      badge: 'Up to 15% off',
+        'Shop hot water bottles, room heaters, blankets, and cozy winter essentials delivered across Bangladesh.',
+      ctaLabel: 'Shop winter essentials',
+      ctaHref: '/shop',
+      badge: 'Winter picks',
       image: '',
       imageAlt: '',
-      theme: 'forest',
+      theme: 'navy',
       isActive: true,
     },
     {
-      id: 'gift-boxes',
-      eyebrow: 'Gift ready',
-      title: 'Thoughtful gift boxes for every occasion',
+      id: 'winter-fashion',
+      eyebrow: 'Seasonal fashion',
+      title: 'Winter dresses and layers for everyone',
       description:
-        'Beautifully packed combinations of premium nuts, dates and healthy treats, ready to send to someone you care about.',
-      ctaLabel: 'Explore gift boxes',
-      ctaHref: '/shop?category=gift-boxes',
-      badge: 'New collection',
+        'Find winter dresses, jackets, sweaters, and shawls in a range of sizes, styles, and prices.',
+      ctaLabel: 'Explore winter wear',
+      ctaHref: '/shop',
+      badge: 'New season',
+      image: '',
+      imageAlt: '',
+      theme: 'berry',
+      isActive: true,
+    },
+    {
+      id: 'kids-and-decor',
+      eyebrow: 'Something for every home',
+      title: 'Kids toys and decorative items',
+      description:
+        'Discover toys for kids and decorative pieces that brighten every room, plus many more everyday products.',
+      ctaLabel: 'Browse all products',
+      ctaHref: '/shop',
+      badge: 'All kinds of products',
       image: '',
       imageAlt: '',
       theme: 'amber',
@@ -413,23 +497,113 @@ export const DEFAULT_HERO_CAROUSEL: HeroCarouselSettings = {
       eyebrow: 'Free delivery',
       title: `Free delivery on orders over ${formatBdt(2000)}`,
       description:
-        'Stock your pantry with clean, honest essentials and enjoy free nationwide delivery. Cash on delivery available.',
+        'Shop all kinds of products across Bangladesh and enjoy free delivery on qualifying orders. Cash on delivery available.',
       ctaLabel: 'Start shopping',
       ctaHref: '/shop',
       badge: 'Nationwide',
       image: '',
       imageAlt: '',
-      theme: 'navy',
+      theme: 'forest',
       isActive: true,
     },
   ],
 };
+
+export const DELIVERY_BENEFIT_ICON_VALUES = [
+  'truck',
+  'wallet',
+  'shield',
+  'phone',
+  'package',
+  'sparkles',
+] as const;
+
+export type DeliveryBenefitIcon = (typeof DELIVERY_BENEFIT_ICON_VALUES)[number];
+
+export const deliveryBenefitSchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  title: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(180).default(''),
+  icon: z.enum(DELIVERY_BENEFIT_ICON_VALUES).default('truck'),
+  isActive: z.boolean().default(true),
+});
+
+export type DeliveryBenefitSettings = z.infer<typeof deliveryBenefitSchema>;
+
+export const DEFAULT_DELIVERY_BENEFITS: DeliveryBenefitSettings[] = [
+  {
+    id: 'cash-on-delivery',
+    title: 'Cash on delivery',
+    description: 'Pay when your order arrives',
+    icon: 'wallet',
+    isActive: true,
+  },
+  {
+    id: 'inside-outside-dhaka',
+    title: 'Inside & outside Dhaka',
+    description: 'Delivery across the service areas',
+    icon: 'truck',
+    isActive: true,
+  },
+  {
+    id: 'quality-checked',
+    title: 'Quality checked',
+    description: 'Selected products, checked before dispatch',
+    icon: 'shield',
+    isActive: true,
+  },
+  {
+    id: 'real-support',
+    title: 'Easy support',
+    description: 'Help when you need it',
+    icon: 'phone',
+    isActive: true,
+  },
+];
+
+export interface VariantPricingInput {
+  price: number;
+  compareAtPrice?: number | null;
+  flashPrice?: number | null;
+  flashStartsAt?: Date | string | null;
+  flashEndsAt?: Date | string | null;
+}
+
+export function resolveVariantPricing(variant: VariantPricingInput, now = new Date()) {
+  const startsAt = variant.flashStartsAt ? new Date(variant.flashStartsAt) : null;
+  const endsAt = variant.flashEndsAt ? new Date(variant.flashEndsAt) : null;
+  const flashActive =
+    Boolean(variant.flashPrice && variant.flashPrice > 0) &&
+    (!startsAt || startsAt <= now) &&
+    (!endsAt || endsAt >= now);
+  const sellingPrice = flashActive ? Number(variant.flashPrice) : variant.price;
+  const referencePrice =
+    variant.compareAtPrice && variant.compareAtPrice > sellingPrice
+      ? variant.compareAtPrice
+      : flashActive && variant.price > sellingPrice
+        ? variant.price
+        : undefined;
+  const discountPercent = referencePrice
+    ? Math.round(((referencePrice - sellingPrice) / referencePrice) * 100)
+    : 0;
+
+  return {
+    sellingPrice,
+    referencePrice,
+    discountPercent,
+    isOnSale: Boolean(referencePrice),
+    saleEndsAt: flashActive ? endsAt : undefined,
+    savings: referencePrice ? referencePrice - sellingPrice : 0,
+  };
+}
 
 export const settingsUpdateSchema = z.object({
   storeName: z.string().trim().min(2, 'Store name is required').max(120).optional(),
   supportPhone: z.string().trim().max(20).optional().or(z.literal('')),
   supportEmail: z.string().trim().email('Enter a valid email').optional().or(z.literal('')),
   bkashMerchantNumber: z.string().trim().max(20).optional().or(z.literal('')),
+  nagadMerchantNumber: z.string().trim().max(20).optional().or(z.literal('')),
+  rocketMerchantNumber: z.string().trim().max(20).optional().or(z.literal('')),
   freeDeliveryThreshold: z.coerce.number().min(0).optional(),
   defaultDeliveryCharge: z.coerce.number().min(0).optional(),
   deliveryZones: z
@@ -452,6 +626,9 @@ export const settingsUpdateSchema = z.object({
     })
     .optional(),
   heroCarousel: heroCarouselSettingsSchema.optional(),
+  flashDealsEnabled: z.boolean().optional(),
+  featuredCategoryIds: z.array(objectIdSchema).max(8).optional(),
+  deliveryBenefits: z.array(deliveryBenefitSchema).max(6).optional(),
 });
 
 export type SettingsUpdateInput = z.infer<typeof settingsUpdateSchema>;

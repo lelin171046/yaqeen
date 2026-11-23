@@ -1,10 +1,11 @@
-import { formatBdt } from '@yaqeen/shared';
+import { formatBdt } from '@anando-deal/shared';
 import {
   ArrowLeft,
   Check,
   ImageOff,
   Minus,
   PackageCheck,
+  Play,
   Plus,
   ShieldCheck,
   ShoppingBag,
@@ -37,7 +38,7 @@ export default function ProductPage() {
 
   const [selectedSku, setSelectedSku] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [imageIndex, setImageIndex] = useState(0);
+  const [mediaIndex, setMediaIndex] = useState(0);
 
   if (isLoading) {
     return (
@@ -73,12 +74,32 @@ export default function ProductPage() {
     );
   }
 
-  const variant =
-    product.variants.find((item) => item.sku === selectedSku) ?? product.variants[0];
+  const variant = product.variants.find((item) => item.sku === selectedSku) ?? product.variants[0];
   const available = variant?.stock ?? 0;
-  const image = product.images[imageIndex] ?? product.images[0];
   const category = typeof product.category === 'object' ? product.category : null;
   const canAdd = Boolean(variant) && available > 0 && product.isActive;
+
+  const media = [
+    ...product.images
+      .filter((item) => item.url?.trim())
+      .map((item, index) => ({
+        key: `image-${index}`,
+        type: 'image' as const,
+        url: item.url,
+        alt: item.alt || `${product.name} ${index + 1}`,
+      })),
+    ...(product.video?.trim()
+      ? [
+          {
+            key: 'video',
+            type: 'video' as const,
+            url: product.video.trim(),
+            alt: `${product.name} video`,
+          },
+        ]
+      : []),
+  ];
+  const activeMedia = media[mediaIndex] ?? media[0];
 
   const addToCart = (thenCheckout = false) => {
     if (!variant || !canAdd) {
@@ -122,10 +143,7 @@ export default function ProductPage() {
           {category && (
             <>
               <span>/</span>
-              <Link
-                to={`/shop?category=${category.slug}`}
-                className="hover:text-foreground"
-              >
+              <Link to={`/shop?category=${category.slug}`} className="hover:text-foreground">
                 {category.name}
               </Link>
             </>
@@ -135,10 +153,19 @@ export default function ProductPage() {
         <div className="grid gap-10 lg:grid-cols-[1fr_0.95fr] lg:gap-14">
           <div>
             <div className="relative aspect-square overflow-hidden rounded-3xl border bg-secondary">
-              {image?.url ? (
+              {activeMedia?.type === 'video' ? (
+                <video
+                  src={activeMedia.url}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label={activeMedia.alt}
+                  className="h-full w-full bg-black object-contain"
+                />
+              ) : activeMedia?.url ? (
                 <img
-                  src={image.url}
-                  alt={image.alt || product.name}
+                  src={activeMedia.url}
+                  alt={activeMedia.alt}
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -152,24 +179,44 @@ export default function ProductPage() {
               </div>
             </div>
 
-            {product.images.length > 1 && (
-              <div className="mt-4 flex gap-3 overflow-x-auto">
-                {product.images.map((item, index) => (
+            {media.length > 1 && (
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+                {media.map((item, index) => (
                   <button
-                    key={`${item.url}-${index}`}
+                    key={item.key}
                     type="button"
-                    onClick={() => setImageIndex(index)}
+                    onClick={() => setMediaIndex(index)}
                     className={cn(
-                      'h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-secondary',
-                      index === imageIndex ? 'border-primary' : 'border-transparent',
+                      'relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-secondary',
+                      index === mediaIndex ? 'border-primary' : 'border-transparent',
                     )}
-                    aria-label={`View image ${index + 1}`}
+                    aria-label={
+                      item.type === 'video'
+                        ? 'View product video'
+                        : `View image ${index + 1}`
+                    }
+                    aria-pressed={index === mediaIndex}
                   >
-                    <img
-                      src={item.url}
-                      alt={item.alt || `${product.name} ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
+                    {item.type === 'video' ? (
+                      <>
+                        <video
+                          src={item.url}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          className="h-full w-full object-cover"
+                        />
+                        <span className="absolute inset-0 grid place-items-center bg-black/40 text-white">
+                          <Play className="h-6 w-6 fill-white" />
+                        </span>
+                      </>
+                    ) : (
+                      <img
+                        src={item.url}
+                        alt={item.alt}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                   </button>
                 ))}
               </div>
@@ -177,16 +224,16 @@ export default function ProductPage() {
           </div>
 
           <div>
-            {category && (
-              <p className="text-sm font-semibold text-primary">{category.name}</p>
-            )}
+            {category && <p className="text-sm font-semibold text-primary">{category.name}</p>}
             <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{product.name}</h1>
             {product.shortDescription && (
               <p className="mt-3 text-muted-foreground">{product.shortDescription}</p>
             )}
 
             <div className="mt-6 flex flex-wrap items-end gap-3">
-              <p className="text-3xl font-semibold">{formatBdt(variant?.price ?? product.basePrice)}</p>
+              <p className="text-3xl font-semibold">
+                {formatBdt(variant?.price ?? product.basePrice)}
+              </p>
               {variant?.compareAtPrice && variant.compareAtPrice > variant.price && (
                 <p className="pb-1 text-base text-muted-foreground line-through">
                   {formatBdt(variant.compareAtPrice)}
@@ -195,9 +242,7 @@ export default function ProductPage() {
               <span
                 className={cn(
                   'mb-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
-                  available > 0
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-rose-50 text-rose-700',
+                  available > 0 ? 'bg-secondary text-foreground' : 'bg-muted text-muted-foreground',
                 )}
               >
                 {available > 0 ? `In stock · ${available} left` : 'Out of stock'}

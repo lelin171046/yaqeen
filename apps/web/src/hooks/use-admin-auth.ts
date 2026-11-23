@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { LoginInput } from '@yaqeen/shared';
+import type { LoginInput } from '@anando-deal/shared';
 import { api } from '@/lib/api';
 import type { AdminDto } from '@/lib/types';
 

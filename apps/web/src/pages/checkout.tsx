@@ -1,4 +1,9 @@
-import { createOrderSchema, formatBdt } from '@yaqeen/shared';
+import {
+  createOrderSchema,
+  formatBdt,
+  PAYMENT_METHOD_LABELS,
+  type ManualPaymentMethod,
+} from '@anando-deal/shared';
 import { Check, Copy, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -30,7 +35,9 @@ function estimateDelivery(
 
   const isDhaka = district.trim().toLowerCase() === 'dhaka';
   const zones = settings?.deliveryZones ?? [];
-  const zone = zones.find((item) => (isDhaka ? /inside/i.test(item.name) : /outside/i.test(item.name)));
+  const zone = zones.find((item) =>
+    isDhaka ? /inside/i.test(item.name) : /outside/i.test(item.name),
+  );
 
   return zone?.charge ?? settings?.defaultDeliveryCharge ?? 80;
 }
@@ -60,6 +67,18 @@ function Field({
   );
 }
 
+type MerchantNumberKey = 'bkashMerchantNumber' | 'nagadMerchantNumber' | 'rocketMerchantNumber';
+
+const MANUAL_PAYMENT_OPTIONS: Array<{
+  method: ManualPaymentMethod;
+  merchantNumberKey: MerchantNumberKey;
+  brand: string;
+}> = [
+  { method: 'BKASH_MANUAL', merchantNumberKey: 'bkashMerchantNumber', brand: 'bKash' },
+  { method: 'NAGAD_MANUAL', merchantNumberKey: 'nagadMerchantNumber', brand: 'Nagad' },
+  { method: 'ROCKET_MANUAL', merchantNumberKey: 'rocketMerchantNumber', brand: 'Rocket' },
+];
+
 export default function CheckoutPage() {
   const items = useCart((state) => state.items);
   const setQuantity = useCart((state) => state.setQuantity);
@@ -80,10 +99,10 @@ export default function CheckoutPage() {
     area: '',
     notes: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BKASH_MANUAL'>('COD');
-  const [bkashTrxId, setBkashTrxId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<ManualPaymentMethod | 'COD'>('COD');
+  const [paymentTrxId, setPaymentTrxId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [copied, setCopied] = useState(false);
+  const [copiedMethod, setCopiedMethod] = useState<ManualPaymentMethod | null>(null);
 
   const subtotal = cartSubtotal(items);
   const deliveryCharge = estimateDelivery(settings, customer.district, subtotal);
@@ -93,21 +112,23 @@ export default function CheckoutPage() {
     setCustomer((current) => ({ ...current, [key]: value }));
   };
 
-  const copyMerchantNumber = async () => {
-    if (!settings?.bkashMerchantNumber) {
+  const copyMerchantNumber = async (option: (typeof MANUAL_PAYMENT_OPTIONS)[number]) => {
+    const number = settings?.[option.merchantNumberKey];
+
+    if (!number) {
       return;
     }
 
-    await navigator.clipboard.writeText(settings.bkashMerchantNumber);
-    setCopied(true);
-    toast.success('bKash number copied');
-    window.setTimeout(() => setCopied(false), 2000);
+    await navigator.clipboard.writeText(number);
+    setCopiedMethod(option.method);
+    toast.success(`${option.brand} number copied`);
+    window.setTimeout(() => setCopiedMethod(null), 2000);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const linkCode = sessionStorage.getItem('yaqeen:link') ?? undefined;
+    const linkCode = sessionStorage.getItem('anando-deal:link') ?? undefined;
 
     const payload = {
       items: items.map((item) => ({
@@ -117,7 +138,8 @@ export default function CheckoutPage() {
       })),
       customer,
       paymentMethod,
-      bkashTrxId: paymentMethod === 'BKASH_MANUAL' ? bkashTrxId : undefined,
+      paymentTrxId: paymentMethod === 'COD' ? undefined : paymentTrxId,
+      bkashTrxId: paymentMethod === 'BKASH_MANUAL' ? paymentTrxId : undefined,
       source: linkCode ? { type: 'LINK' as const, linkCode } : undefined,
       idempotencyKey: idempotencyKey.current,
     };
@@ -145,10 +167,8 @@ export default function CheckoutPage() {
     createOrder.mutate(parsed.data, {
       onSuccess: (order) => {
         clear();
-        sessionStorage.removeItem('yaqeen:link');
-        navigate(
-          `/order/${order.orderNumber}?phone=${encodeURIComponent(customer.phone)}`,
-        );
+        sessionStorage.removeItem('anando-deal:link');
+        navigate(`/order/${order.orderNumber}?phone=${encodeURIComponent(customer.phone)}`);
       },
       onError: (error) => {
         toast.error(getApiErrorMessage(error));
@@ -264,11 +284,7 @@ export default function CheckoutPage() {
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field
-                    label="Full address"
-                    htmlFor="address"
-                    error={errors['customer.address']}
-                  >
+                  <Field label="Full address" htmlFor="address" error={errors['customer.address']}>
                     <Textarea
                       id="address"
                       value={customer.address}
@@ -313,7 +329,7 @@ export default function CheckoutPage() {
                     value="COD"
                     checked={paymentMethod === 'COD'}
                     onChange={() => setPaymentMethod('COD')}
-                    className="mt-1 accent-emerald-700"
+                    className="mt-1 accent-black"
                   />
                   <span>
                     <span className="block text-sm font-semibold">Cash on delivery</span>
@@ -323,74 +339,85 @@ export default function CheckoutPage() {
                   </span>
                 </label>
 
-                <label
-                  className={cn(
-                    'flex cursor-pointer gap-3 rounded-xl border p-4 transition-colors',
-                    paymentMethod === 'BKASH_MANUAL' && 'border-primary bg-primary/5',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="BKASH_MANUAL"
-                    checked={paymentMethod === 'BKASH_MANUAL'}
-                    onChange={() => setPaymentMethod('BKASH_MANUAL')}
-                    className="mt-1 accent-emerald-700"
-                  />
-                  <span className="w-full">
-                    <span className="block text-sm font-semibold">bKash transfer</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Send the total to our merchant number and enter the transaction ID.
-                    </span>
+                {MANUAL_PAYMENT_OPTIONS.map((option) => {
+                  const merchantNumber = settings?.[option.merchantNumberKey] ?? '';
+                  const isSelected = paymentMethod === option.method;
+                  const isCopied = copiedMethod === option.method;
 
-                    {paymentMethod === 'BKASH_MANUAL' && (
-                      <span className="mt-3 block rounded-xl bg-muted p-3">
-                        <span className="block text-xs text-muted-foreground">
-                          Send money to
+                  return (
+                    <label
+                      key={option.method}
+                      className={cn(
+                        'flex cursor-pointer gap-3 rounded-xl border p-4 transition-colors',
+                        isSelected && 'border-primary bg-primary/5',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={option.method}
+                        checked={isSelected}
+                        onChange={() => setPaymentMethod(option.method)}
+                        className="mt-1 accent-black"
+                      />
+                      <span className="w-full">
+                        <span className="block text-sm font-semibold">
+                          {PAYMENT_METHOD_LABELS[option.method]}
                         </span>
-                        <span className="mt-1 flex items-center justify-between gap-3">
-                          <span className="text-sm font-semibold">
-                            {settings?.bkashMerchantNumber || 'Number shared on call'}
-                          </span>
-                          {settings?.bkashMerchantNumber && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                void copyMerchantNumber();
-                              }}
-                            >
-                              {copied ? <Check /> : <Copy />}
-                              {copied ? 'Copied' : 'Copy'}
-                            </Button>
-                          )}
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          Send the total via {option.brand} and enter the transaction ID.
                         </span>
-                      </span>
-                    )}
 
-                    {paymentMethod === 'BKASH_MANUAL' && (
-                      <span className="mt-3 block">
-                        <Label htmlFor="bkashTrxId" className="text-xs">
-                          bKash transaction ID
-                        </Label>
-                        <Input
-                          id="bkashTrxId"
-                          value={bkashTrxId}
-                          onChange={(event) => setBkashTrxId(event.target.value)}
-                          placeholder="e.g. 9F2A7B1C3D"
-                          className="mt-1.5"
-                        />
-                        {errors.bkashTrxId && (
-                          <span className="mt-1 block text-xs text-destructive">
-                            {errors.bkashTrxId}
-                          </span>
+                        {isSelected && (
+                          <>
+                            <span className="mt-3 block rounded-xl bg-muted p-3">
+                              <span className="block text-xs text-muted-foreground">
+                                Send money to
+                              </span>
+                              <span className="mt-1 flex items-center justify-between gap-3">
+                                <span className="text-sm font-semibold">
+                                  {merchantNumber || 'Number shared on call'}
+                                </span>
+                                {merchantNumber && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      void copyMerchantNumber(option);
+                                    }}
+                                  >
+                                    {isCopied ? <Check /> : <Copy />}
+                                    {isCopied ? 'Copied' : 'Copy'}
+                                  </Button>
+                                )}
+                              </span>
+                            </span>
+
+                            <span className="mt-3 block">
+                              <Label htmlFor="paymentTrxId" className="text-xs">
+                                Transaction ID
+                              </Label>
+                              <Input
+                                id="paymentTrxId"
+                                value={paymentTrxId}
+                                onChange={(event) => setPaymentTrxId(event.target.value)}
+                                placeholder="e.g. 9F2A7B1C3D"
+                                className="mt-1.5"
+                              />
+                              {errors.paymentTrxId && (
+                                <span className="mt-1 block text-xs text-destructive">
+                                  {errors.paymentTrxId}
+                                </span>
+                              )}
+                            </span>
+                          </>
                         )}
                       </span>
-                    )}
-                  </span>
-                </label>
+                    </label>
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -484,7 +511,12 @@ export default function CheckoutPage() {
               </p>
             ) : null}
 
-            <Button type="submit" size="lg" className="mt-5 w-full" disabled={createOrder.isPending}>
+            <Button
+              type="submit"
+              size="lg"
+              className="mt-5 w-full"
+              disabled={createOrder.isPending}
+            >
               {createOrder.isPending && <Loader2 className="animate-spin" />}
               {createOrder.isPending
                 ? 'Placing order...'

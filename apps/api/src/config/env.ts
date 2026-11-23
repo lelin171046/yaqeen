@@ -1,11 +1,49 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+export interface MongoUriConfig {
+  NODE_ENV?: string;
+  MONGODB_URI?: string;
+  MONGODB_URI_LOCAL?: string;
+}
+
+const MONGO_URI_PATTERN = /^mongodb(?:\+srv)?:\/\//;
+
+export function resolveMongoUri(config: MongoUriConfig): string | undefined {
+  const productionUri = config.MONGODB_URI?.trim();
+  const localUri = config.MONGODB_URI_LOCAL?.trim();
+
+  if (config.NODE_ENV === 'production') {
+    return productionUri || undefined;
+  }
+
+  return localUri || productionUri || undefined;
+}
+
+export function requireMongoUri(config: MongoUriConfig): string {
+  const isProduction = config.NODE_ENV === 'production';
+  const variableName = isProduction ? 'MONGODB_URI' : 'MONGODB_URI_LOCAL or MONGODB_URI';
+  const uri = resolveMongoUri(config);
+
+  if (!uri) {
+    throw new Error(
+      `${variableName} is not configured for ${isProduction ? 'production' : 'local'} mode`,
+    );
+  }
+
+  if (!MONGO_URI_PATTERN.test(uri)) {
+    throw new Error(`${variableName} must start with "mongodb://" or "mongodb+srv://"`);
+  }
+
+  return uri;
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(4000),
     MONGODB_URI: z.string().trim().min(1).optional(),
+    MONGODB_URI_LOCAL: z.string().trim().min(1).optional(),
     CORS_ORIGIN: z.string().trim().default('http://localhost:5173'),
     JWT_ACCESS_SECRET: z.string().min(16).default('dev-access-secret-change-me'),
     JWT_REFRESH_SECRET: z.string().min(16).default('dev-refresh-secret-change-me'),
@@ -31,9 +69,11 @@ const envSchema = z
     CLOUDINARY_API_KEY: z.string().trim().optional(),
     CLOUDINARY_API_SECRET: z.string().trim().optional(),
     BKASH_MERCHANT_NUMBER: z.string().trim().optional(),
+    NAGAD_MERCHANT_NUMBER: z.string().trim().optional(),
+    ROCKET_MERCHANT_NUMBER: z.string().trim().optional(),
     FREE_DELIVERY_THRESHOLD: z.coerce.number().min(0).default(2000),
     DEFAULT_DELIVERY_CHARGE: z.coerce.number().min(0).default(80),
-    ADMIN_NAME: z.string().trim().default('Yaqeen Admin'),
+    ADMIN_NAME: z.string().trim().default('Anando Deal Admin'),
     ADMIN_EMAIL: z.string().trim().email().optional(),
     ADMIN_PASSWORD: z.string().min(8).optional(),
   })
@@ -45,7 +85,7 @@ const envSchema = z
     if (!value.MONGODB_URI) {
       ctx.addIssue({
         code: 'custom',
-        message: 'MONGODB_URI is required in production',
+        message: 'MONGODB_URI (production/online database) is required in production',
         path: ['MONGODB_URI'],
       });
     }

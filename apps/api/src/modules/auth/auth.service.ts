@@ -1,4 +1,4 @@
-import type { LoginInput } from '@yaqeen/shared';
+import type { LoginInput } from '@anando-deal/shared';
 import { AdminModel, type AdminDocument } from '../../models/admin.js';
 import { AppError } from '../../utils/app-error.js';
 import { verifyPassword } from '../../utils/password.js';

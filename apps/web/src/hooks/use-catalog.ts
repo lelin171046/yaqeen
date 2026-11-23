@@ -1,10 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type {
-  CategoryDto,
-  ProductDto,
-  ProductListResponse,
-} from '@/lib/types';
+import type { CategoryDto, ProductDto, ProductListResponse } from '@/lib/types';
 
 export interface ProductQueryParams {
   search?: string;
@@ -13,6 +9,7 @@ export interface ProductQueryParams {
   page?: number;
   limit?: number;
   featured?: boolean;
+  flashSale?: boolean;
 }
 
 export function useCategories() {
@@ -34,10 +31,12 @@ export function useProducts(params: ProductQueryParams) {
         params: {
           ...params,
           featured: params.featured === undefined ? undefined : String(params.featured),
+          flashSale: params.flashSale === undefined ? undefined : String(params.flashSale),
         },
       });
       return response.data;
     },
+    refetchInterval: params.flashSale ? 60_000 : undefined,
   });
 }
 

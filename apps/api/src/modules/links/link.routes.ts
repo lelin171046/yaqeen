@@ -1,4 +1,4 @@
-import { orderLinkInputSchema, orderLinkUpdateSchema } from '@yaqeen/shared';
+import { orderLinkInputSchema, orderLinkUpdateSchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler.js';
 import {

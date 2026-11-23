@@ -1,8 +1,8 @@
 {
-  "name": "yaqeen",
+  "name": "anando-deal",
   "private": true,
   "version": "0.1.0",
-  "description": "Yaqeen - natural nuts, dry foods and nutrition e-commerce",
+  "description": "Anando Deal - general e-commerce store",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -11,15 +11,15 @@
     "node": ">=24"
   },
   "scripts": {
-    "build:shared": "npm run build -w @yaqeen/shared",
-    "dev": "npm run build:shared && concurrently -k -n web,api -c cyan,green \"npm run dev -w @yaqeen/web\" \"npm run dev -w @yaqeen/api\"",
-    "dev:web": "npm run dev -w @yaqeen/web",
-    "dev:api": "npm run dev -w @yaqeen/api",
-    "build": "npm run build:shared && npm run build -w @yaqeen/web && npm run build -w @yaqeen/api",
-    "typecheck": "npm run typecheck -w @yaqeen/shared && npm run typecheck -w @yaqeen/web && npm run typecheck -w @yaqeen/api",
+    "build:shared": "npm run build -w @anando-deal/shared",
+    "dev": "npm run build:shared && concurrently -k -n web,api -c cyan,green \"npm run dev -w @anando-deal/web\" \"npm run dev -w @anando-deal/api\"",
+    "dev:web": "npm run dev -w @anando-deal/web",
+    "dev:api": "npm run dev -w @anando-deal/api",
+    "build": "npm run build:shared && npm run build -w @anando-deal/web && npm run build -w @anando-deal/api",
+    "typecheck": "npm run typecheck -w @anando-deal/shared && npm run typecheck -w @anando-deal/web && npm run typecheck -w @anando-deal/api",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "npm run test -w @yaqeen/api"
+    "test": "npm run test -w @anando-deal/api"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

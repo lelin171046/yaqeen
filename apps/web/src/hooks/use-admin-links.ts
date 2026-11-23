@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { OrderLinkInput, OrderLinkUpdateInput } from '@yaqeen/shared';
+import type { OrderLinkInput, OrderLinkUpdateInput } from '@anando-deal/shared';
 import { api } from '@/lib/api';
 import type { OrderLinkDto } from '@/lib/types';
 

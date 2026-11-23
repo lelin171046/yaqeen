@@ -8,6 +8,7 @@ export interface SendEmailInput {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string;
 }
 
 export interface SendEmailResult {
@@ -33,10 +34,10 @@ export function getEmailStatus(): {
       provider,
       configured: Boolean(
         env.SMTP_HOST &&
-          env.SMTP_PORT &&
-          (env.EMAIL_FROM || env.SMTP_USER) &&
-          env.SMTP_USER &&
-          env.SMTP_PASS,
+        env.SMTP_PORT &&
+        (env.EMAIL_FROM || env.SMTP_USER) &&
+        env.SMTP_USER &&
+        env.SMTP_PASS,
       ),
     };
   }
@@ -75,15 +76,14 @@ async function sendWithResend(input: SendEmailInput): Promise<SendEmailResult> {
       subject: input.subject,
       text: input.text,
       html: input.html,
+      reply_to: input.replyTo,
     }),
     signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(
-      `Resend rejected the email (${response.status}): ${body.slice(0, 500)}`,
-    );
+    throw new Error(`Resend rejected the email (${response.status}): ${body.slice(0, 500)}`);
   }
 
   const data = (await response.json()) as { id?: string };
@@ -103,10 +103,7 @@ async function sendWithSmtp(input: SendEmailInput): Promise<SendEmailResult> {
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
-    auth:
-      env.SMTP_USER && env.SMTP_PASS
-        ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
-        : undefined,
+    auth: env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
   });
 
   try {
@@ -116,6 +113,7 @@ async function sendWithSmtp(input: SendEmailInput): Promise<SendEmailResult> {
       subject: input.subject,
       text: input.text,
       html: input.html,
+      replyTo: input.replyTo,
     });
 
     return {
@@ -139,7 +137,5 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     'Sending email',
   );
 
-  return env.EMAIL_PROVIDER === 'resend'
-    ? sendWithResend(input)
-    : sendWithSmtp(input);
+  return env.EMAIL_PROVIDER === 'resend' ? sendWithResend(input) : sendWithSmtp(input);
 }

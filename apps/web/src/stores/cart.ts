@@ -28,8 +28,7 @@ export const useCart = create<CartState>()(
       addItem: (item, quantity = 1) =>
         set((state) => {
           const existing = state.items.find(
-            (line) =>
-              line.productId === item.productId && line.variantSku === item.variantSku,
+            (line) => line.productId === item.productId && line.variantSku === item.variantSku,
           );
 
           if (existing) {
@@ -46,17 +45,13 @@ export const useCart = create<CartState>()(
           }
 
           return {
-            items: [
-              ...state.items,
-              { ...item, quantity: Math.min(quantity, item.maxStock) },
-            ],
+            items: [...state.items, { ...item, quantity: Math.min(quantity, item.maxStock) }],
           };
         }),
       removeItem: (productId, variantSku) =>
         set((state) => ({
           items: state.items.filter(
-            (line) =>
-              !(line.productId === productId && line.variantSku === variantSku),
+            (line) => !(line.productId === productId && line.variantSku === variantSku),
           ),
         })),
       setQuantity: (productId, variantSku, quantity) =>
@@ -73,7 +68,7 @@ export const useCart = create<CartState>()(
       clear: () => set({ items: [] }),
     }),
     {
-      name: 'yaqeen-cart',
+      name: 'anando-deal-cart',
       version: 1,
     },
   ),

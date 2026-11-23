@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build:shared && npm run build -w @yaqeen/api && npm run build -w @yaqeen/web",
+  "buildCommand": "npm run build -w @anando-deal/shared && npm run build -w @anando-deal/api && npm run build -w @anando-deal/web",
   "outputDirectory": "apps/web/dist",
   "functions": {
     "api/index.ts": {

@@ -1,8 +1,4 @@
-import {
-  productInputSchema,
-  productQuerySchema,
-  productUpdateSchema,
-} from '@yaqeen/shared';
+import { productInputSchema, productQuerySchema, productUpdateSchema } from '@anando-deal/shared';
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler.js';
 import {

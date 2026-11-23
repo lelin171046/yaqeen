@@ -52,14 +52,15 @@ export default function ShopPage() {
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-semibold text-primary">Shop Yaqeen</p>
+            <p className="text-sm font-semibold text-primary">Shop Anando Deal</p>
             <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">
               {category
-                ? categories?.find((item) => item.slug === category)?.name ?? 'Our range'
-                : 'Clean food, honestly priced'}
+                ? (categories?.find((item) => item.slug === category)?.name ?? 'Our range')
+                : 'All kinds of products'}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Nuts, dry fruits, diet foods and everyday nutrition, packed fresh in Bangladesh.
+              Winter essentials, winter wear, kids toys, decorative items, and more, delivered
+              across Bangladesh.
             </p>
           </div>
 
@@ -92,9 +93,7 @@ export default function ShopPage() {
               onClick={() => updateParam('category', '')}
               className={cn(
                 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                !category
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'hover:bg-muted',
+                !category ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
               )}
             >
               All
@@ -134,9 +133,12 @@ export default function ShopPage() {
         </div>
 
         {isLoading && (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card">
+              <div
+                key={index}
+                className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card"
+              >
                 <div className="aspect-square animate-pulse bg-muted" />
                 <div className="flex flex-1 flex-col space-y-3 p-4">
                   <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
@@ -168,7 +170,7 @@ export default function ShopPage() {
 
         {data && data.items.length > 0 && (
           <>
-            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
               {data.items.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
@@ -177,8 +179,8 @@ export default function ShopPage() {
             {data.pagination.pages > 1 && (
               <div className="mt-10 flex items-center justify-between gap-4">
                 <p className="text-sm text-muted-foreground">
-                  Page {data.pagination.page} of {data.pagination.pages} ·{' '}
-                  {data.pagination.total} products
+                  Page {data.pagination.page} of {data.pagination.pages} · {data.pagination.total}{' '}
+                  products
                 </p>
                 <div className="flex gap-2">
                   <Button

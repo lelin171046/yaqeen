@@ -3,7 +3,7 @@ import type {
   OrderNotesUpdateInput,
   OrderPaymentUpdateInput,
   OrderStatusUpdateInput,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import { Types } from 'mongoose';
 import { OrderModel, type OrderDocument } from '../../models/order.js';
 import { ProductModel } from '../../models/product.js';
@@ -106,10 +106,7 @@ export async function listAdminOrders(input: AdminOrderQueryInput) {
   const skip = (input.page - 1) * input.limit;
 
   const [orders, total] = await Promise.all([
-    OrderModel.find(filter)
-      .sort(sortMap[input.sort])
-      .skip(skip)
-      .limit(input.limit),
+    OrderModel.find(filter).sort(sortMap[input.sort]).skip(skip).limit(input.limit),
     OrderModel.countDocuments(filter),
   ]);
 
@@ -151,8 +148,7 @@ async function restoreOrderStock(order: OrderDocument): Promise<void> {
 }
 
 async function takeOrderStock(order: OrderDocument): Promise<void> {
-  const applied: Array<{ productId: Types.ObjectId; variantSku: string; quantity: number }> =
-    [];
+  const applied: Array<{ productId: Types.ObjectId; variantSku: string; quantity: number }> = [];
 
   for (const item of order.items) {
     const result = await ProductModel.updateOne(

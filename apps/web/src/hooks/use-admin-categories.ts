@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CategoryInput, CategoryUpdateInput } from '@yaqeen/shared';
+import type { CategoryInput, CategoryUpdateInput } from '@anando-deal/shared';
 import { api } from '@/lib/api';
 import type { CategoryDto } from '@/lib/types';
 
@@ -39,10 +39,7 @@ export function useUpdateCategory() {
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: CategoryUpdateInput }) => {
-      const response = await api.patch<{ category: CategoryDto }>(
-        `/admin/categories/${id}`,
-        input,
-      );
+      const response = await api.patch<{ category: CategoryDto }>(`/admin/categories/${id}`, input);
       return response.data.category;
     },
     onSuccess: invalidate,

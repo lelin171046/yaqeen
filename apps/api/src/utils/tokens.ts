@@ -6,8 +6,8 @@ import { AppError } from './app-error.js';
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 export const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-const ISSUER = 'yaqeen-api';
-const AUDIENCE = 'yaqeen-admin';
+const ISSUER = 'anando-deal-api';
+const AUDIENCE = 'anando-deal-admin';
 
 type TokenType = 'access' | 'refresh';
 
@@ -53,18 +53,8 @@ function signToken(
 
 export function issueAdminTokens(admin: AdminTokenSource): AuthTokens {
   return {
-    accessToken: signToken(
-      admin,
-      'access',
-      env.JWT_ACCESS_SECRET,
-      ACCESS_TOKEN_TTL_SECONDS,
-    ),
-    refreshToken: signToken(
-      admin,
-      'refresh',
-      env.JWT_REFRESH_SECRET,
-      REFRESH_TOKEN_TTL_SECONDS,
-    ),
+    accessToken: signToken(admin, 'access', env.JWT_ACCESS_SECRET, ACCESS_TOKEN_TTL_SECONDS),
+    refreshToken: signToken(admin, 'refresh', env.JWT_REFRESH_SECRET, REFRESH_TOKEN_TTL_SECONDS),
   };
 }
 

@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABELS, type OrderStatus } from '@yaqeen/shared';
+import { ORDER_STATUS_LABELS, type OrderStatus } from '@anando-deal/shared';
 import { Loader2, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -27,10 +27,10 @@ export function PageHeader({
 
 const toneClasses: Record<string, string> = {
   primary: 'bg-primary/10 text-primary',
-  emerald: 'bg-emerald-500/10 text-emerald-700',
-  amber: 'bg-amber-500/10 text-amber-700',
-  rose: 'bg-rose-500/10 text-rose-700',
-  sky: 'bg-sky-500/10 text-sky-700',
+  emerald: 'bg-secondary text-foreground',
+  amber: 'bg-muted text-muted-foreground',
+  rose: 'bg-black text-white',
+  sky: 'bg-neutral-200 text-black',
 };
 
 export function StatCard({
@@ -67,17 +67,17 @@ export function StatCard({
 }
 
 const statusColors: Record<string, string> = {
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
-  CONFIRMED: 'border-sky-200 bg-sky-50 text-sky-700',
-  PROCESSING: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  SHIPPED: 'border-violet-200 bg-violet-50 text-violet-700',
-  DELIVERED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  DELIVERY_FAILED: 'border-orange-200 bg-orange-50 text-orange-700',
-  CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700',
-  RETURNED: 'border-slate-200 bg-slate-100 text-slate-700',
-  UNPAID: 'border-amber-200 bg-amber-50 text-amber-700',
-  PAID: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  REFUNDED: 'border-slate-200 bg-slate-100 text-slate-700',
+  PENDING: 'border-border bg-muted text-muted-foreground',
+  CONFIRMED: 'border-black bg-secondary text-foreground',
+  PROCESSING: 'border-border bg-secondary/70 text-foreground',
+  SHIPPED: 'border-black bg-black text-white',
+  DELIVERED: 'border-black bg-secondary text-black',
+  DELIVERY_FAILED: 'border-border bg-muted text-foreground',
+  CANCELLED: 'border-black bg-black text-white',
+  RETURNED: 'border-border bg-muted text-muted-foreground',
+  UNPAID: 'border-border bg-muted text-muted-foreground',
+  PAID: 'border-black bg-secondary text-foreground',
+  REFUNDED: 'border-border bg-muted text-muted-foreground',
 };
 
 export function StatusBadge({ value }: { value: string }) {
@@ -103,7 +103,9 @@ export function EmptyState({
   return (
     <div className="rounded-2xl border bg-card px-6 py-14 text-center">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {description && <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{description}</p>}
+      {description && (
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{description}</p>
+      )}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );
@@ -130,12 +132,7 @@ export function Pagination({
         Page {page} of {pages} · {total} total
       </p>
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => onPage(page - 1)}
-        >
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
           Previous
         </Button>
         <Button

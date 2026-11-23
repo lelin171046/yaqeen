@@ -3,7 +3,7 @@ import type {
   OrderNotesUpdateInput,
   OrderPaymentUpdateInput,
   OrderStatusUpdateInput,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import { api } from '@/lib/api';
 import type { AdminOrderDto } from '@/lib/types';
 import type { PaginationDto } from '@/lib/types';

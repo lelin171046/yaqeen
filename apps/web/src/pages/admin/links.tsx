@@ -1,14 +1,8 @@
-import { orderLinkInputSchema } from '@yaqeen/shared';
+import { orderLinkInputSchema } from '@anando-deal/shared';
 import { Copy, ExternalLink, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import {
-  EmptyState,
-  ErrorBlock,
-  Field,
-  LoadingBlock,
-  PageHeader,
-} from '@/components/admin/ui';
+import { EmptyState, ErrorBlock, Field, LoadingBlock, PageHeader } from '@/components/admin/ui';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,8 +108,7 @@ export default function AdminLinksPage() {
         toast.success(editingCode ? 'Link updated' : 'Link created');
         closeForm();
       },
-      onError: (mutationError: unknown) =>
-        toast.error(getApiErrorMessage(mutationError)),
+      onError: (mutationError: unknown) => toast.error(getApiErrorMessage(mutationError)),
     };
 
     if (editingCode) {
@@ -173,7 +166,12 @@ export default function AdminLinksPage() {
           </div>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Product" htmlFor="link-product" error={errors.productId} className="sm:col-span-2">
+            <Field
+              label="Product"
+              htmlFor="link-product"
+              error={errors.productId}
+              className="sm:col-span-2"
+            >
               <Select
                 id="link-product"
                 value={form.productId}
@@ -196,7 +194,7 @@ export default function AdminLinksPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, title: event.target.value }))
                 }
-                placeholder="Eid cashew campaign"
+                placeholder="Winter essentials campaign"
               />
             </Field>
             <Field
@@ -211,7 +209,7 @@ export default function AdminLinksPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, code: event.target.value }))
                 }
-                placeholder="eid-cashew"
+                placeholder="winter-essentials"
               />
             </Field>
             <Field label="Campaign" htmlFor="link-campaign" error={errors.campaign}>
@@ -221,7 +219,7 @@ export default function AdminLinksPage() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, campaign: event.target.value }))
                 }
-                placeholder="Facebook – Eid 2026"
+                placeholder="Facebook – Winter 2026"
               />
             </Field>
             <Field label="Destination" htmlFor="link-destination" error={errors.destination}>
@@ -295,7 +293,7 @@ export default function AdminLinksPage() {
                   </p>
                 </div>
                 {link.isActive ? (
-                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                  <Badge variant="outline" className="border-black bg-secondary text-foreground">
                     Active
                   </Badge>
                 ) : (
@@ -316,9 +314,7 @@ export default function AdminLinksPage() {
                 </div>
                 <div className="rounded-xl bg-muted/60 px-2 py-2">
                   <p className="text-lg font-semibold">
-                    {link.clicks > 0
-                      ? `${Math.round((link.orders / link.clicks) * 100)}%`
-                      : '—'}
+                    {link.clicks > 0 ? `${Math.round((link.orders / link.clicks) * 100)}%` : '—'}
                   </p>
                   <p className="text-[11px] text-muted-foreground">CVR</p>
                 </div>

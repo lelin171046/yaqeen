@@ -35,9 +35,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     const isTooLarge = error.code === 'LIMIT_FILE_SIZE';
 
     res.status(isTooLarge ? 413 : 400).json({
-      message: isTooLarge
-        ? 'File is too large (images max 5 MB, videos max 50 MB)'
-        : error.message,
+      message: isTooLarge ? 'File is too large (images max 5 MB, videos max 50 MB)' : error.message,
       code: error.code,
     });
     return;
@@ -56,8 +54,6 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   res.status(500).json({
     message: 'Internal server error',
     code: 'INTERNAL_ERROR',
-    ...(env.NODE_ENV === 'development' && error instanceof Error
-      ? { debug: error.message }
-      : {}),
+    ...(env.NODE_ENV === 'development' && error instanceof Error ? { debug: error.message } : {}),
   });
 };

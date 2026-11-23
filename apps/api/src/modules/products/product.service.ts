@@ -1,11 +1,13 @@
-import type {
-  ProductInput,
-  ProductQueryInput,
-  ProductUpdateInput,
-  ProductVariantInput,
-} from '@yaqeen/shared';
+import {
+  resolveVariantPricing,
+  type ProductInput,
+  type ProductQueryInput,
+  type ProductUpdateInput,
+  type ProductVariantInput,
+} from '@anando-deal/shared';
 import { Types, type QueryFilter } from 'mongoose';
 import { CategoryModel } from '../../models/category.js';
+import { OrderModel } from '../../models/order.js';
 import { ProductModel, type Product } from '../../models/product.js';
 import { AppError } from '../../utils/app-error.js';
 import { ensureUniqueSlug } from '../../utils/slug.js';
@@ -47,6 +49,25 @@ function normalizeVariants(slug: string, variants: ProductVariantInput[]) {
       );
     }
 
+    if (
+      variant.flashPrice !== undefined &&
+      (variant.flashPrice <= 0 || variant.flashPrice > variant.price)
+    ) {
+      throw AppError.badRequest(
+        `Flash sale price for "${variant.label}" must be greater than zero and not higher than the selling price`,
+      );
+    }
+
+    if (
+      variant.flashStartsAt &&
+      variant.flashEndsAt &&
+      variant.flashStartsAt >= variant.flashEndsAt
+    ) {
+      throw AppError.badRequest(
+        `Flash sale end date for "${variant.label}" must be after the start date`,
+      );
+    }
+
     const sku = (variant.sku?.trim() || buildVariantSku(slug, variant, index)).toUpperCase();
 
     if (seenSkus.has(sku)) {
@@ -62,6 +83,9 @@ function normalizeVariants(slug: string, variants: ProductVariantInput[]) {
       compareAtPrice: variant.compareAtPrice,
       stock: variant.stock,
       sku,
+      flashPrice: variant.flashPrice,
+      flashStartsAt: variant.flashStartsAt,
+      flashEndsAt: variant.flashEndsAt,
     };
   });
 }
@@ -71,6 +95,49 @@ function computePricing(variants: Array<{ price: number; stock: number }>) {
     basePrice: Math.min(...variants.map((variant) => variant.price)),
     totalStock: variants.reduce((sum, variant) => sum + variant.stock, 0),
   };
+}
+
+type ProductWithId = Product & { _id: Types.ObjectId };
+
+function serializeProduct(product: ProductWithId, salesCount: number, now = new Date()) {
+  const variants = product.variants.map((variant) => {
+    const pricing = resolveVariantPricing(variant, now);
+
+    return {
+      ...variant,
+      effectivePrice: pricing.sellingPrice,
+      discountPercent: pricing.discountPercent,
+      isOnSale: pricing.isOnSale,
+      saleEndsAt: pricing.saleEndsAt,
+    };
+  });
+
+  return {
+    ...product,
+    variants,
+    effectiveBasePrice: Math.min(...variants.map((variant) => variant.effectivePrice)),
+    salesCount,
+  };
+}
+
+async function getSalesCounts(productIds: Types.ObjectId[]): Promise<Map<string, number>> {
+  if (productIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await OrderModel.aggregate<{ _id: Types.ObjectId; count: number }>([
+    {
+      $match: {
+        status: { $nin: ['CANCELLED', 'RETURNED', 'DELIVERY_FAILED'] },
+        'items.productId': { $in: productIds },
+      },
+    },
+    { $unwind: '$items' },
+    { $match: { 'items.productId': { $in: productIds } } },
+    { $group: { _id: '$items.productId', count: { $sum: '$items.quantity' } } },
+  ]);
+
+  return new Map(rows.map((row) => [String(row._id), row.count]));
 }
 
 async function assertSkuAvailable(
@@ -90,9 +157,7 @@ async function assertSkuAvailable(
 
   if (clash) {
     const clashingSku = clash.variants.find((variant) => skus.includes(variant.sku))?.sku;
-    throw AppError.conflict(
-      `SKU ${clashingSku ?? skus[0]} is already used by "${clash.name}"`,
-    );
+    throw AppError.conflict(`SKU ${clashingSku ?? skus[0]} is already used by "${clash.name}"`);
   }
 }
 
@@ -132,13 +197,35 @@ export async function listProducts(
     filter.isFeatured = input.featured;
   }
 
+  if (input.flashSale) {
+    const now = new Date();
+
+    filter.variants = {
+      $elemMatch: {
+        flashPrice: { $gt: 0 },
+        $and: [
+          {
+            $or: [
+              { flashStartsAt: { $exists: false } },
+              { flashStartsAt: null },
+              { flashStartsAt: { $lte: now } },
+            ],
+          },
+          {
+            $or: [
+              { flashEndsAt: { $exists: false } },
+              { flashEndsAt: null },
+              { flashEndsAt: { $gte: now } },
+            ],
+          },
+        ],
+      },
+    };
+  }
+
   if (input.search) {
     const regex = new RegExp(escapeRegex(input.search), 'i');
-    filter.$or = [
-      { name: regex },
-      { shortDescription: regex },
-      { tags: regex },
-    ];
+    filter.$or = [{ name: regex }, { shortDescription: regex }, { tags: regex }];
   }
 
   if (input.category) {
@@ -151,9 +238,7 @@ export async function listProducts(
         })
           .select('_id')
           .lean()
-      : await CategoryModel.findOne({ slug: input.category.toLowerCase() })
-          .select('_id')
-          .lean();
+      : await CategoryModel.findOne({ slug: input.category.toLowerCase() }).select('_id').lean();
 
     if (!category) {
       return emptyPage(input);
@@ -185,6 +270,7 @@ export async function listProducts(
 
   const skip = (input.page - 1) * input.limit;
 
+  const now = new Date();
   const [items, total] = await Promise.all([
     ProductModel.find(filter)
       .populate('category', 'name slug')
@@ -194,9 +280,13 @@ export async function listProducts(
       .lean(),
     ProductModel.countDocuments(filter),
   ]);
+  const productItems = items as ProductWithId[];
+  const salesCounts = await getSalesCounts(productItems.map((item) => item._id));
 
   return {
-    items,
+    items: productItems.map((item) =>
+      serializeProduct(item, salesCounts.get(String(item._id)) ?? 0, now),
+    ),
     pagination: {
       page: input.page,
       limit: input.limit,
@@ -218,13 +308,14 @@ export async function getProductBySlug(slug: string, includeInactive = false) {
     throw AppError.notFound('Product not found');
   }
 
-  return product;
+  const productWithId = product as ProductWithId;
+  const salesCounts = await getSalesCounts([productWithId._id]);
+
+  return serializeProduct(productWithId, salesCounts.get(String(productWithId._id)) ?? 0);
 }
 
 export async function getProductById(id: string) {
-  const product = await ProductModel.findById(id)
-    .populate('category', 'name slug')
-    .lean();
+  const product = await ProductModel.findById(id).populate('category', 'name slug').lean();
 
   if (!product) {
     throw AppError.notFound('Product not found');
@@ -337,9 +428,7 @@ export async function updateProduct(id: string, input: ProductUpdateInput) {
     }
     nextSlug = input.slug;
   } else if (input.name && input.name !== product.name && !input.slug) {
-    nextSlug = await ensureUniqueSlug(input.name, (candidate) =>
-      slugIsTaken(candidate, id),
-    );
+    nextSlug = await ensureUniqueSlug(input.name, (candidate) => slugIsTaken(candidate, id));
   }
 
   if (nextSlug !== product.slug) {

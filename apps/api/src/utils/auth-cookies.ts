@@ -1,13 +1,9 @@
 import type { CookieOptions, Response } from 'express';
 import { env } from '../config/env.js';
-import {
-  ACCESS_TOKEN_TTL_SECONDS,
-  REFRESH_TOKEN_TTL_SECONDS,
-  type AuthTokens,
-} from './tokens.js';
+import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_SECONDS, type AuthTokens } from './tokens.js';
 
-export const ACCESS_COOKIE = 'yaqeen_access';
-export const REFRESH_COOKIE = 'yaqeen_refresh';
+export const ACCESS_COOKIE = 'anando_deal_access';
+export const REFRESH_COOKIE = 'anando_deal_refresh';
 export const REFRESH_COOKIE_PATH = '/api/admin/auth';
 
 const baseCookieOptions: CookieOptions = {

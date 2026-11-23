@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   const server = app.listen(env.PORT, () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV },
-      `Yaqeen API listening on http://localhost:${env.PORT}`,
+      `Anando Deal API listening on http://localhost:${env.PORT}`,
     );
   });
 
@@ -52,6 +52,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  logger.fatal({ err: error }, 'Failed to start Yaqeen API');
+  logger.fatal({ err: error }, 'Failed to start Anando Deal API');
   process.exit(1);
 });

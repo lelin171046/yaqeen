@@ -9,7 +9,7 @@ import {
   type OrderCourier,
   type OrderStatus,
   type PaymentMethod,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import {
   ArrowLeft,
   Check,
@@ -23,13 +23,7 @@ import {
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  ErrorBlock,
-  Field,
-  LoadingBlock,
-  PageHeader,
-  StatusBadge,
-} from '@/components/admin/ui';
+import { ErrorBlock, Field, LoadingBlock, PageHeader, StatusBadge } from '@/components/admin/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -134,7 +128,10 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
 
   const savePayment = () => {
     updatePayment.mutate(
-      { paymentStatus: paymentStatus as 'UNPAID' | 'PAID' | 'REFUNDED', note: paymentNote.trim() || undefined },
+      {
+        paymentStatus: paymentStatus as 'UNPAID' | 'PAID' | 'REFUNDED',
+        note: paymentNote.trim() || undefined,
+      },
       {
         onSuccess: () => {
           toast.success('Payment status updated');
@@ -275,9 +272,7 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                     <p className="text-sm font-medium">
                       {ORDER_STATUS_LABELS[entry.status as OrderStatus] ?? entry.status}
                     </p>
-                    {entry.note && (
-                      <p className="text-xs text-muted-foreground">{entry.note}</p>
-                    )}
+                    {entry.note && <p className="text-xs text-muted-foreground">{entry.note}</p>}
                     <p className="text-[11px] text-muted-foreground">
                       {formatDateTime(entry.changedAt)}
                     </p>
@@ -350,11 +345,16 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                 <p className="mt-1">{order.customer.notes}</p>
               </div>
             )}
-            {order.bkashTrxId && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                <p className="font-semibold">bKash transaction ID</p>
-                <p className="mt-1 font-mono text-sm">{order.bkashTrxId}</p>
-                <p className="mt-1">Verify this in your bKash account before marking as paid.</p>
+            {(order.paymentTrxId || order.bkashTrxId) && (
+              <div className="mt-4 rounded-xl border border-border bg-muted p-3 text-xs text-muted-foreground">
+                <p className="font-semibold">Transaction ID</p>
+                <p className="mt-1 font-mono text-sm">{order.paymentTrxId || order.bkashTrxId}</p>
+                <p className="mt-1">
+                  Verify this in your{' '}
+                  {PAYMENT_METHOD_LABELS[order.paymentMethod as PaymentMethod] ??
+                    order.paymentMethod}{' '}
+                  account before marking as paid.
+                </p>
               </div>
             )}
           </section>
@@ -381,9 +381,7 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                     <Select
                       id="order-courier"
                       value={courier}
-                      onChange={(event) =>
-                        setCourier(event.target.value as OrderCourier | '')
-                      }
+                      onChange={(event) => setCourier(event.target.value as OrderCourier | '')}
                     >
                       <option value="">Select courier</option>
                       {ORDER_COURIERS.map((item) => (
@@ -426,8 +424,7 @@ function OrderDetail({ order }: { order: AdminOrderDto }) {
                 {updateStatus.isPending ? 'Updating…' : 'Update status'}
               </Button>
               <p className="text-[11px] text-muted-foreground">
-                Cancelling, returning or a failed delivery restores the order stock
-                automatically.
+                Cancelling, returning or a failed delivery restores the order stock automatically.
               </p>
             </div>
           </section>

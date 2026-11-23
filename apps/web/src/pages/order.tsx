@@ -6,7 +6,7 @@ import {
   type OrderCourier,
   type OrderStatus,
   type PaymentMethod,
-} from '@yaqeen/shared';
+} from '@anando-deal/shared';
 import {
   Check,
   CheckCircle2,
@@ -30,17 +30,11 @@ import { getApiErrorMessage } from '@/lib/api-error';
 import { getWhatsAppHref } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
 
-const statusFlow: OrderStatus[] = [
-  'PENDING',
-  'CONFIRMED',
-  'PROCESSING',
-  'SHIPPED',
-  'DELIVERED',
-];
+const statusFlow: OrderStatus[] = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
 
 const paymentStatusStyles: Record<string, string> = {
-  UNPAID: 'bg-amber-50 text-amber-700',
-  PAID: 'bg-emerald-50 text-emerald-700',
+  UNPAID: 'bg-muted text-muted-foreground',
+  PAID: 'bg-secondary text-foreground',
   REFUNDED: 'bg-muted text-muted-foreground',
 };
 
@@ -56,10 +50,7 @@ export default function OrderPage() {
   const [params, setParams] = useSearchParams();
   const phone = params.get('phone') ?? '';
   const [phoneInput, setPhoneInput] = useState(phone);
-  const { data: order, isLoading, isError, error } = useTrackOrder(
-    orderNumber,
-    phone || undefined,
-  );
+  const { data: order, isLoading, isError, error } = useTrackOrder(orderNumber, phone || undefined);
 
   const submitPhone = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -140,7 +131,7 @@ export default function OrderPage() {
   const isCancelled = order.status === 'CANCELLED' || order.status === 'RETURNED';
   const isDeliveryFailed = order.status === 'DELIVERY_FAILED';
   const whatsappHref = getWhatsAppHref(
-    `Hi Yaqeen, I need help with order ${order.orderNumber}.`,
+    `Hi Anando Deal, I need help with order ${order.orderNumber}.`,
   );
 
   return (
@@ -149,8 +140,8 @@ export default function OrderPage() {
         <div className="rounded-3xl border bg-card p-6 sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-secondary">
+                <CheckCircle2 className="h-6 w-6 text-foreground" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-primary">Order received</p>
@@ -218,7 +209,10 @@ export default function OrderPage() {
                   const current = index === currentIndex;
 
                   return (
-                    <div key={status} className="relative flex flex-1 flex-col items-center text-center">
+                    <div
+                      key={status}
+                      className="relative flex flex-1 flex-col items-center text-center"
+                    >
                       {index > 0 && (
                         <span
                           className={cn(
@@ -339,7 +333,7 @@ export default function OrderPage() {
                 <span>{order.deliveryCharge === 0 ? 'Free' : formatBdt(order.deliveryCharge)}</span>
               </div>
               {order.discount > 0 && (
-                <div className="flex justify-between text-emerald-700">
+                <div className="flex justify-between text-foreground">
                   <span>Discount</span>
                   <span>-{formatBdt(order.discount)}</span>
                 </div>
@@ -370,7 +364,9 @@ export default function OrderPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {PAYMENT_METHOD_LABELS[order.paymentMethod as PaymentMethod] ??
                     order.paymentMethod}
-                  {order.bkashTrxId ? ` · TrxID ${order.bkashTrxId}` : ''}
+                  {order.paymentTrxId || order.bkashTrxId
+                    ? ` · TrxID ${order.paymentTrxId || order.bkashTrxId}`
+                    : ''}
                 </p>
               </div>
             </section>

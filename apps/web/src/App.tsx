@@ -10,6 +10,8 @@ const ProductPage = lazy(() => import('@/pages/product'));
 const CheckoutPage = lazy(() => import('@/pages/checkout'));
 const OrderPage = lazy(() => import('@/pages/order'));
 const TrackPage = lazy(() => import('@/pages/track'));
+const ContactPage = lazy(() => import('@/pages/contact'));
+const WishlistPage = lazy(() => import('@/pages/wishlist'));
 const NotFoundPage = lazy(() => import('@/pages/not-found'));
 const LinkRedirectPage = lazy(() => import('@/pages/link-redirect'));
 
@@ -21,6 +23,7 @@ const AdminProductsPage = lazy(() => import('@/pages/admin/products'));
 const AdminProductFormPage = lazy(() => import('@/pages/admin/product-form'));
 const AdminCategoriesPage = lazy(() => import('@/pages/admin/categories'));
 const AdminLinksPage = lazy(() => import('@/pages/admin/links'));
+const AdminSupportPage = lazy(() => import('@/pages/admin/support'));
 const AdminSettingsPage = lazy(() => import('@/pages/admin/settings'));
 
 function PageFallback() {
@@ -41,6 +44,8 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order/:orderNumber" element={<OrderPage />} />
         <Route path="/track" element={<TrackPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
         <Route path="/l/:code" element={<LinkRedirectPage />} />
 
         <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -60,6 +65,7 @@ export default function App() {
           <Route path="products/:id/edit" element={<AdminProductFormPage />} />
           <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="links" element={<AdminLinksPage />} />
+          <Route path="support" element={<AdminSupportPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
 
